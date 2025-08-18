@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "http://localhost:8081";
 let authToken = localStorage.getItem("authToken");
 let currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 let currentLanguage = "en";

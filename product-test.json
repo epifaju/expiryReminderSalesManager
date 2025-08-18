@@ -1,0 +1,14 @@
+{
+  "name": "Coca-Cola 33cl",
+  "description": "Boisson gazeuse rafraîchissante",
+  "barcode": "123456789012",
+  "purchasePrice": 0.80,
+  "sellingPrice": 1.50,
+  "stockQuantity": 50,
+  "minStockLevel": 10,
+  "expiryDate": "2025-12-31",
+  "manufacturingDate": "2024-01-15",
+  "category": "Boissons",
+  "unit": "pcs",
+  "isActive": true
+}

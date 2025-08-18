@@ -1,0 +1,43 @@
+{
+  "products": [
+    {
+      "name": "Coca-Cola 33cl",
+      "description": "Boisson gazeuse",
+      "category": "Boissons",
+      "barcode": "123456789001",
+      "purchasePrice": 0.50,
+      "sellingPrice": 1.20,
+      "stockQuantity": 50,
+      "minStockLevel": 10,
+      "unit": "canette",
+      "manufacturingDate": "2024-01-15",
+      "expiryDate": "2025-01-15"
+    },
+    {
+      "name": "Pain de mie",
+      "description": "Pain de mie complet",
+      "category": "Boulangerie",
+      "barcode": "123456789002",
+      "purchasePrice": 1.20,
+      "sellingPrice": 2.50,
+      "stockQuantity": 25,
+      "minStockLevel": 5,
+      "unit": "paquet",
+      "manufacturingDate": "2024-08-15",
+      "expiryDate": "2024-08-25"
+    },
+    {
+      "name": "Lait 1L",
+      "description": "Lait demi-écrémé",
+      "category": "Produits laitiers",
+      "barcode": "123456789003",
+      "purchasePrice": 0.80,
+      "sellingPrice": 1.50,
+      "stockQuantity": 30,
+      "minStockLevel": 8,
+      "unit": "bouteille",
+      "manufacturingDate": "2024-08-10",
+      "expiryDate": "2024-08-20"
+    }
+  ]
+}

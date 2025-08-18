@@ -1,0 +1,14 @@
+{
+  "name": "Pain de mie",
+  "description": "Pain de mie complet pour sandwichs",
+  "barcode": "123456789013",
+  "purchasePrice": 1.20,
+  "sellingPrice": 2.00,
+  "stockQuantity": 25,
+  "minStockLevel": 15,
+  "expiryDate": "2024-08-25",
+  "manufacturingDate": "2024-08-18",
+  "category": "Boulangerie",
+  "unit": "pcs",
+  "isActive": true
+}
