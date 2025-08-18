@@ -58,11 +58,19 @@ public class AuthService {
         user.setUsername(signupRequest.username());
         user.setEmail(signupRequest.email());
         user.setPassword(passwordEncoder.encode(signupRequest.password()));
+        // Set default values for required fields
+        user.setFirstName("Utilisateur");
+        user.setLastName("Nouveau");
         
         Set<Role> roles = new HashSet<>();
-        signupRequest.roles().forEach(role -> 
-            roles.add(Role.valueOf(role.toUpperCase()))
-        );
+        if (signupRequest.roles() != null && !signupRequest.roles().isEmpty()) {
+            signupRequest.roles().forEach(role -> 
+                roles.add(Role.valueOf(role.toUpperCase()))
+            );
+        } else {
+            // Set default role if no roles provided
+            roles.add(Role.ROLE_USER);
+        }
         user.setRoles(roles);
 
         return userRepository.save(user);
