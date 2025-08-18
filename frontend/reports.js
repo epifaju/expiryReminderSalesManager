@@ -131,6 +131,9 @@ async function loadSummaryStats(startDate, endDate) {
   if (response && response.ok) {
     const data = await response.json();
 
+    // Store data for exports
+    currentSummaryStats = data;
+
     document.getElementById("totalRevenue").textContent = `${(
       data.totalAmount || 0
     ).toFixed(2)} €`;
@@ -160,8 +163,13 @@ async function loadPaymentMethodStats(startDate, endDate) {
 
   if (response && response.ok) {
     const data = await response.json();
+
+    // Store data for exports
+    currentPaymentMethodData = data;
+
     displayPaymentMethodChart(data);
   } else {
+    currentPaymentMethodData = [];
     document.getElementById("paymentMethodChart").innerHTML =
       '<div class="alert alert-info">Aucune donnée disponible pour cette période</div>';
   }
@@ -220,8 +228,13 @@ async function loadTopProducts(startDate, endDate) {
   if (response && response.ok) {
     const salesData = await response.json();
     const topProducts = calculateTopProducts(salesData.content || []);
+
+    // Store data for exports
+    currentTopProductsData = topProducts;
+
     displayTopProducts(topProducts);
   } else {
+    currentTopProductsData = [];
     document.getElementById("topProductsList").innerHTML =
       '<div class="alert alert-info">Aucune donnée disponible</div>';
   }
@@ -287,8 +300,13 @@ async function loadSalesTrend(startDate, endDate) {
 
   if (response && response.ok) {
     const data = await response.json();
+
+    // Store data for exports
+    currentSalesTrendData = data;
+
     displaySalesTrend(data);
   } else {
+    currentSalesTrendData = [];
     document.getElementById("salesTrendChart").innerHTML =
       '<div class="alert alert-info">Aucune donnée disponible</div>';
   }
@@ -327,8 +345,13 @@ async function loadInventoryStatus() {
 
   if (response && response.ok) {
     const data = await response.json();
+
+    // Store data for exports
+    currentInventoryData = data;
+
     displayInventoryStatus(data);
   } else {
+    currentInventoryData = {};
     document.getElementById("inventoryStatus").innerHTML =
       '<div class="alert alert-info">Erreur lors du chargement du stock</div>';
   }
@@ -371,8 +394,13 @@ async function loadDetailedSalesReport(startDate, endDate) {
 
   if (response && response.ok) {
     const data = await response.json();
+
+    // Store data for exports
+    currentSalesData = data.content || [];
+
     displayDetailedSalesTable(data.content || []);
   } else {
+    currentSalesData = [];
     document.getElementById("detailedSalesTable").innerHTML =
       '<div class="loading">Erreur lors du chargement</div>';
   }
@@ -446,28 +474,382 @@ function getStatusLabel(status) {
   return labels[status] || status;
 }
 
+// Global variables to store current data for exports
+let currentSalesData = [];
+let currentPaymentMethodData = [];
+let currentTopProductsData = [];
+let currentSalesTrendData = [];
+let currentInventoryData = {};
+let currentSummaryStats = {};
+
 // Export Functions
-function exportDetailedReport() {
-  showAlert("Fonctionnalité d'export PDF en cours de développement", "info");
+async function exportDetailedReport() {
+  if (!window.jsPDF) {
+    await loadJsPDF();
+  }
+
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+
+  if (currentSalesData.length === 0) {
+    showAlert("Aucune donnée à exporter pour cette période", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("Rapport Détaillé des Ventes", 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(
+    `Période: ${formatDate(startDate)} - ${formatDate(endDate)}`,
+    20,
+    30
+  );
+  doc.text(
+    `Généré le: ${new Date().toLocaleDateString(
+      "fr-FR"
+    )} à ${new Date().toLocaleTimeString("fr-FR")}`,
+    20,
+    40
+  );
+
+  // Summary section
+  let yPos = 55;
+  doc.setFontSize(14);
+  doc.text("Résumé", 20, yPos);
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.text(
+    `Total des ventes: ${currentSummaryStats.totalCount || 0}`,
+    20,
+    yPos
+  );
+  doc.text(
+    `Chiffre d'affaires: ${(currentSummaryStats.totalAmount || 0).toFixed(
+      2
+    )} €`,
+    120,
+    yPos
+  );
+  yPos += 8;
+  doc.text(
+    `Vente moyenne: ${(currentSummaryStats.averageAmount || 0).toFixed(2)} €`,
+    20,
+    yPos
+  );
+  yPos += 15;
+
+  // Sales table
+  doc.setFontSize(14);
+  doc.text("Détail des Ventes", 20, yPos);
+  yPos += 10;
+
+  // Table headers
+  doc.setFontSize(8);
+  const headers = [
+    "N° Vente",
+    "Date",
+    "Client",
+    "Articles",
+    "Paiement",
+    "Montant",
+    "Statut",
+  ];
+  const colWidths = [25, 25, 35, 20, 25, 25, 25];
+  let xPos = 20;
+
+  headers.forEach((header, index) => {
+    doc.text(header, xPos, yPos);
+    xPos += colWidths[index];
+  });
+  yPos += 8;
+
+  // Table data
+  currentSalesData.forEach((sale) => {
+    if (yPos > 270) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    xPos = 20;
+    const rowData = [
+      sale.saleNumber,
+      new Date(sale.saleDate).toLocaleDateString("fr-FR"),
+      (sale.customerName || "Anonyme").substring(0, 15),
+      sale.saleItems.length.toString(),
+      getPaymentMethodLabel(sale.paymentMethod).substring(0, 10),
+      `${sale.finalAmount.toFixed(2)} €`,
+      getStatusLabel(sale.status).substring(0, 10),
+    ];
+
+    rowData.forEach((data, index) => {
+      doc.text(data, xPos, yPos);
+      xPos += colWidths[index];
+    });
+    yPos += 6;
+  });
+
+  doc.save(`rapport-ventes-detaille-${startDate}-${endDate}.pdf`);
+  showAlert("Rapport PDF généré avec succès", "success");
+}
+
+async function exportPaymentMethodReport() {
+  if (!window.jsPDF) {
+    await loadJsPDF();
+  }
+
+  if (currentPaymentMethodData.length === 0) {
+    showAlert("Aucune donnée de paiement à exporter", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("Rapport des Méthodes de Paiement", 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(
+    `Période: ${formatDate(startDate)} - ${formatDate(endDate)}`,
+    20,
+    30
+  );
+  doc.text(`Généré le: ${new Date().toLocaleDateString("fr-FR")}`, 20, 40);
+
+  let yPos = 60;
+
+  // Payment methods table
+  doc.setFontSize(14);
+  doc.text("Répartition par Méthode de Paiement", 20, yPos);
+  yPos += 15;
+
+  doc.setFontSize(10);
+  const totalAmount = currentPaymentMethodData.reduce(
+    (sum, [, , amount]) => sum + amount,
+    0
+  );
+
+  currentPaymentMethodData.forEach(([method, count, amount]) => {
+    const percentage = ((amount / totalAmount) * 100).toFixed(1);
+    doc.text(`${getPaymentMethodLabel(method)}:`, 20, yPos);
+    doc.text(`${count} ventes`, 80, yPos);
+    doc.text(`${amount.toFixed(2)} €`, 120, yPos);
+    doc.text(`${percentage}%`, 160, yPos);
+    yPos += 8;
+  });
+
+  doc.save(`rapport-methodes-paiement-${startDate}-${endDate}.pdf`);
+  showAlert("Rapport PDF des méthodes de paiement généré", "success");
+}
+
+async function exportTopProductsReport() {
+  if (!window.jsPDF) {
+    await loadJsPDF();
+  }
+
+  if (currentTopProductsData.length === 0) {
+    showAlert("Aucune donnée de produits à exporter", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("Rapport des Produits les Plus Vendus", 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(
+    `Période: ${formatDate(startDate)} - ${formatDate(endDate)}`,
+    20,
+    30
+  );
+  doc.text(`Généré le: ${new Date().toLocaleDateString("fr-FR")}`, 20, 40);
+
+  let yPos = 60;
+
+  // Top products table
+  doc.setFontSize(14);
+  doc.text("Top 5 des Produits", 20, yPos);
+  yPos += 15;
+
+  doc.setFontSize(10);
+  currentTopProductsData.forEach((product, index) => {
+    const medal =
+      index === 0
+        ? "🥇"
+        : index === 1
+        ? "🥈"
+        : index === 2
+        ? "🥉"
+        : `${index + 1}.`;
+    doc.text(`${medal} ${product.name}:`, 20, yPos);
+    doc.text(`${product.quantity} vendus`, 100, yPos);
+    doc.text(`${product.revenue.toFixed(2)} €`, 150, yPos);
+    yPos += 8;
+  });
+
+  doc.save(`rapport-top-produits-${startDate}-${endDate}.pdf`);
+  showAlert("Rapport PDF des top produits généré", "success");
+}
+
+async function exportSalesTrendReport() {
+  if (!window.jsPDF) {
+    await loadJsPDF();
+  }
+
+  if (currentSalesTrendData.length === 0) {
+    showAlert("Aucune donnée de tendance à exporter", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("Rapport des Tendances de Ventes", 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(
+    `Période: ${formatDate(startDate)} - ${formatDate(endDate)}`,
+    20,
+    30
+  );
+  doc.text(`Généré le: ${new Date().toLocaleDateString("fr-FR")}`, 20, 40);
+
+  let yPos = 60;
+
+  // Sales trend table
+  doc.setFontSize(14);
+  doc.text("Évolution Quotidienne des Ventes", 20, yPos);
+  yPos += 15;
+
+  doc.setFontSize(10);
+  currentSalesTrendData.forEach(([date, count, amount]) => {
+    const formattedDate = new Date(date).toLocaleDateString("fr-FR");
+    doc.text(`${formattedDate}:`, 20, yPos);
+    doc.text(`${count} ventes`, 80, yPos);
+    doc.text(`${amount.toFixed(2)} €`, 130, yPos);
+    yPos += 8;
+  });
+
+  doc.save(`rapport-tendances-ventes-${startDate}-${endDate}.pdf`);
+  showAlert("Rapport PDF des tendances généré", "success");
+}
+
+async function exportInventoryReport() {
+  if (!window.jsPDF) {
+    await loadJsPDF();
+  }
+
+  if (!currentInventoryData || Object.keys(currentInventoryData).length === 0) {
+    showAlert("Aucune donnée d'inventaire à exporter", "warning");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFontSize(20);
+  doc.text("Rapport d'État de l'Inventaire", 20, 20);
+
+  doc.setFontSize(12);
+  doc.text(
+    `Généré le: ${new Date().toLocaleDateString(
+      "fr-FR"
+    )} à ${new Date().toLocaleTimeString("fr-FR")}`,
+    20,
+    30
+  );
+
+  let yPos = 50;
+
+  // Inventory status
+  doc.setFontSize(14);
+  doc.text("État de l'Inventaire", 20, yPos);
+  yPos += 15;
+
+  doc.setFontSize(12);
+  doc.text(
+    `Stock Faible: ${currentInventoryData.lowStockCount || 0} produits`,
+    20,
+    yPos
+  );
+  yPos += 8;
+  doc.text(
+    `Produits Expirants (7 jours): ${
+      currentInventoryData.expiringCount || 0
+    } produits`,
+    20,
+    yPos
+  );
+  yPos += 8;
+  doc.text(
+    `Produits Expirés: ${currentInventoryData.expiredCount || 0} produits`,
+    20,
+    yPos
+  );
+  yPos += 8;
+  doc.text(
+    `Nombre de Catégories: ${currentInventoryData.categoriesCount || 0}`,
+    20,
+    yPos
+  );
+
+  doc.save(`rapport-inventaire-${new Date().toISOString().split("T")[0]}.pdf`);
+  showAlert("Rapport PDF de l'inventaire généré", "success");
 }
 
 function exportToCSV() {
   const startDate = document.getElementById("startDate").value;
   const endDate = document.getElementById("endDate").value;
 
-  // Simple CSV export simulation
+  if (currentSalesData.length === 0) {
+    showAlert("Aucune donnée à exporter pour cette période", "warning");
+    return;
+  }
+
   const csvContent = generateCSVContent();
   downloadCSV(csvContent, `rapport-ventes-${startDate}-${endDate}.csv`);
 }
 
 function generateCSVContent() {
-  return `Numéro Vente,Date,Client,Montant,Paiement,Statut
-SALE-001,${new Date().toLocaleDateString(
-    "fr-FR"
-  )},Client Test,25.50,Espèces,Terminée
-SALE-002,${new Date().toLocaleDateString(
-    "fr-FR"
-  )},Client Test 2,45.00,Carte,Terminée`;
+  let csvContent =
+    "Numéro Vente,Date,Client,Articles,Paiement,Montant,Statut\n";
+
+  currentSalesData.forEach((sale) => {
+    const row = [
+      sale.saleNumber,
+      new Date(sale.saleDate).toLocaleDateString("fr-FR"),
+      sale.customerName || "Client anonyme",
+      sale.saleItems.length,
+      getPaymentMethodLabel(sale.paymentMethod),
+      sale.finalAmount.toFixed(2),
+      getStatusLabel(sale.status),
+    ];
+    csvContent += row.map((field) => `"${field}"`).join(",") + "\n";
+  });
+
+  return csvContent;
 }
 
 function downloadCSV(content, filename) {
@@ -485,23 +867,26 @@ function downloadCSV(content, filename) {
   }
 }
 
-function exportPaymentMethodReport() {
-  showAlert(
-    "Export PDF des méthodes de paiement en cours de développement",
-    "info"
-  );
+// Helper function to load jsPDF library
+async function loadJsPDF() {
+  return new Promise((resolve, reject) => {
+    if (window.jsPDF) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load jsPDF"));
+    document.head.appendChild(script);
+  });
 }
 
-function exportTopProductsReport() {
-  showAlert("Export PDF des top produits en cours de développement", "info");
-}
-
-function exportSalesTrendReport() {
-  showAlert("Export PDF des tendances en cours de développement", "info");
-}
-
-function exportInventoryReport() {
-  showAlert("Export PDF de l'inventaire en cours de développement", "info");
+// Helper function to format dates
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleDateString("fr-FR");
 }
 
 // Utility Functions
