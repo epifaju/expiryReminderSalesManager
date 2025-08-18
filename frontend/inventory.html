@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Manager - Inventaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-group select {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .inventory-table {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h3 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-in-stock {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-low-stock {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-out-of-stock {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-expiring {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .product-image {
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+
+        .pagination button {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .pagination button:hover {
+            background: #e9ecef;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+            
+            .filter-group {
+                justify-content: space-between;
+            }
+            
+            .stats-overview {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            table {
+                font-size: 0.9rem;
+            }
+            
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📦 Gestion d'Inventaire</h1>
+        <div class="nav-links">
+            <a href="index.html">🏠 Tableau de Bord</a>
+            <a href="reports.html">📊 Rapports</a>
+            <a href="#" id="logoutBtn">🚪 Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Rechercher un produit...">
+            </div>
+            
+            <div class="filter-group">
+                <select id="categoryFilter">
+                    <option value="">Toutes catégories</option>
+                </select>
+                
+                <select id="statusFilter">
+                    <option value="">Tous statuts</option>
+                    <option value="in-stock">En stock</option>
+                    <option value="low-stock">Stock faible</option>
+                    <option value="out-of-stock">Rupture</option>
+                    <option value="expired">Expirés</option>
+                    <option value="expiring">Expirants</option>
+                </select>
+                
+                <select id="sortBy">
+                    <option value="name">Nom</option>
+                    <option value="category">Catégorie</option>
+                    <option value="stock">Stock</option>
+                    <option value="price">Prix</option>
+                    <option value="expiry">Expiration</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-success" onclick="openAddProductModal()">➕ Ajouter Produit</button>
+            <button class="btn btn-secondary" onclick="exportInventory()">📊 Exporter</button>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-overview">
+            <div class="stat-card">
+                <h3>📦 Total Produits</h3>
+                <div class="value" id="totalProducts">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>💰 Valeur Stock</h3>
+                <div class="value" id="stockValue">0 €</div>
+            </div>
+            <div class="stat-card">
+                <h3>⚠️ Stock Faible</h3>
+                <div class="value" id="lowStockCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>❌ Ruptures</h3>
+                <div class="value" id="outOfStockCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>⏰ Expirants</h3>
+                <div class="value" id="expiringCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>📂 Catégories</h3>
+                <div class="value" id="categoriesCount">0</div>
+            </div>
+        </div>
+
+        <!-- Inventory Table -->
+        <div class="inventory-table">
+            <div class="table-header">
+                <h3>📋 Liste des Produits</h3>
+                <div class="table-actions">
+                    <button class="btn btn-sm btn-warning" onclick="checkExpirations()">⏰ Vérifier Expirations</button>
+                    <button class="btn btn-sm btn-secondary" onclick="refreshInventory()">🔄 Actualiser</button>
+                </div>
+            </div>
+            
+            <div id="tableContainer">
+                <div class="loading">Chargement de l'inventaire...</div>
+            </div>
+            
+            <div class="pagination" id="pagination">
+                <!-- Pagination will be generated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="productModalTitle">Ajouter un Produit</h3>
+                <button class="close" onclick="closeModal('productModal')">&times;</button>
+            </div>
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="productName">Nom du produit *</label>
+                    <input type="text" id="productName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productDescription">Description</label>
+                    <textarea id="productDescription" placeholder="Description du produit..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productBarcode">Code-barres</label>
+                    <input type="text" id="productBarcode" placeholder="Scannez ou saisissez le code-barres">
+                </div>
+                
+                <div class="form-group">
+                    <label for="productCategory">Catégorie</label>
+                    <input type="text" id="productCategory" placeholder="Ex: Alimentaire, Électronique...">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="productPurchasePrice">Prix d'achat *</label>
+                        <input type="number" id="productPurchasePrice" step="0.01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productSellingPrice">Prix de vente *</label>
+                        <input type="number" id="productSellingPrice" step="0.01" required>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="productStockQuantity">Quantité en stock *</label>
+                        <input type="number" id="productStockQuantity" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productMinStockLevel">Seuil d'alerte</label>
+                        <input type="number" id="productMinStockLevel" value="10">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productUnit">Unité</label>
+                    <select id="productUnit">
+                        <option value="pcs">Pièces</option>
+                        <option value="kg">Kilogrammes</option>
+                        <option value="l">Litres</option>
+                        <option value="m">Mètres</option>
+                        <option value="box">Boîtes</option>
+                        <option value="pack">Paquets</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="productManufacturingDate">Date de fabrication</label>
+                        <input type="date" id="productManufacturingDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productExpiryDate">Date d'expiration</label>
+                        <input type="date" id="productExpiryDate">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('productModal')">Annuler</button>
+                    <button type="submit" class="btn btn-success">Sauvegarder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stock Adjustment Modal -->
+    <div id="stockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ajuster le Stock</h3>
+                <button class="close" onclick="closeModal('stockModal')">&times;</button>
+            </div>
+            <form id="stockForm">
+                <div class="form-group">
+                    <label>Produit</label>
+                    <input type="text" id="stockProductName" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label>Stock actuel</label>
+                    <input type="number" id="currentStock" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stockAdjustment">Ajustement</label>
+                    <input type="number" id="stockAdjustment" placeholder="Ex: +10 ou -5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adjustmentReason">Raison</label>
+                    <select id="adjustmentReason">
+                        <option value="restock">Réapprovisionnement</option>
+                        <option value="sale">Vente</option>
+                        <option value="damage">Produit endommagé</option>
+                        <option value="expired">Produit expiré</option>
+                        <option value="inventory">Inventaire physique</option>
+                        <option value="other">Autre</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('stockModal')">Annuler</button>
+                    <button type="submit" class="btn btn-success">Ajuster</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <script src="inventory.js"></script>
+</body>
+</html>

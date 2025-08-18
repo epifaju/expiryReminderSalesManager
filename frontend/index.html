@@ -341,7 +341,11 @@
         <div id="dashboard" class="dashboard">
             <div class="user-info">
                 <span>Connecté en tant que: <strong id="currentUser"></strong></span>
-                <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="reports.html" class="btn btn-secondary" style="text-decoration: none;">📊 Rapports</a>
+                    <a href="inventory.html" class="btn btn-secondary" style="text-decoration: none;">📦 Inventaire</a>
+                    <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
+                </div>
             </div>
 
             <div class="stats-grid">

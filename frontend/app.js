@@ -304,6 +304,10 @@ function updateProductStats(products) {
 async function handleProductSubmit(e) {
   e.preventDefault();
 
+  const form = e.target;
+  const isEdit = form.dataset.isEdit === "true";
+  const productId = form.dataset.productId;
+
   const productData = {
     name: document.getElementById("productName").value,
     description: document.getElementById("productDescription").value,
@@ -338,19 +342,82 @@ async function handleProductSubmit(e) {
     productData.manufacturingDate = manufacturingDate;
   }
 
-  const response = await apiRequest("/products", {
-    method: "POST",
+  // Déterminer l'endpoint et la méthode
+  const endpoint = isEdit ? `/products/${productId}` : "/products";
+  const method = isEdit ? "PUT" : "POST";
+
+  const response = await apiRequest(endpoint, {
+    method: method,
     body: JSON.stringify(productData),
   });
 
   if (response && response.ok) {
-    showAlert("Produit ajouté avec succès!", "success");
+    const successMessage = isEdit
+      ? "Produit modifié avec succès!"
+      : "Produit ajouté avec succès!";
+    showAlert(successMessage, "success");
     closeModal("productModal");
+
+    // Réinitialiser le formulaire pour les prochaines utilisations
+    form.removeAttribute("data-product-id");
+    form.removeAttribute("data-is-edit");
+    const modalTitle = document.querySelector("#productModal h3");
+    modalTitle.textContent = "Ajouter un produit";
+
     loadProducts();
     loadExpirationStats(); // Refresh expiration stats
   } else {
     const error = await response.json();
-    showAlert(error.error || "Erreur lors de l'ajout du produit", "error");
+    const errorMessage = isEdit
+      ? "Erreur lors de la modification du produit"
+      : "Erreur lors de l'ajout du produit";
+    showAlert(error.error || errorMessage, "error");
+  }
+}
+
+async function editProduct(productId) {
+  // Récupérer les données du produit
+  const response = await apiRequest(`/products/${productId}`);
+  if (response && response.ok) {
+    const product = await response.json();
+
+    // Remplir le formulaire avec les données existantes
+    document.getElementById("productName").value = product.name || "";
+    document.getElementById("productDescription").value =
+      product.description || "";
+    document.getElementById("productBarcode").value = product.barcode || "";
+    document.getElementById("productCategory").value = product.category || "";
+    document.getElementById("productPurchasePrice").value =
+      product.purchasePrice || "";
+    document.getElementById("productSellingPrice").value =
+      product.sellingPrice || "";
+    document.getElementById("productStockQuantity").value =
+      product.stockQuantity || "";
+    document.getElementById("productMinStockLevel").value =
+      product.minStockLevel || "";
+    document.getElementById("productUnit").value = product.unit || "";
+
+    // Gérer les dates (format ISO vers format input date)
+    if (product.expiryDate) {
+      document.getElementById("productExpiryDate").value = product.expiryDate;
+    }
+    if (product.manufacturingDate) {
+      document.getElementById("productManufacturingDate").value =
+        product.manufacturingDate;
+    }
+
+    // Modifier le titre du modal
+    const modalTitle = document.querySelector("#productModal h3");
+    modalTitle.textContent = "Modifier le produit";
+
+    // Stocker l'ID du produit pour la mise à jour
+    document.getElementById("productForm").dataset.productId = productId;
+    document.getElementById("productForm").dataset.isEdit = "true";
+
+    // Ouvrir le modal
+    openModal("productModal");
+  } else {
+    showAlert("Erreur lors du chargement du produit", "error");
   }
 }
 
@@ -660,9 +727,7 @@ async function loadDashboardData() {
 // Global functions for onclick handlers
 window.openModal = openModal;
 window.closeModal = closeModal;
-window.editProduct = function (id) {
-  showAlert("Fonction de modification en cours de développement", "info");
-};
+window.editProduct = editProduct;
 window.deleteProduct = deleteProduct;
 window.removeSaleItemRow = removeSaleItemRow;
 window.viewSale = viewSale;
