@@ -1,0 +1,12 @@
+{
+  "welcome.message": "Bem-vindo",
+  "system.description": "Sistema de gestão de vendas e estoque",
+  "login.title": "Login",
+  "login.button": "Entrar",
+  "signup.title": "Registro",
+  "signup.button": "Registrar",
+  "logout": "Sair",
+  "product.list": "Produtos",
+  "reports": "Relatórios",
+  "inventory": "Inventário"
+}

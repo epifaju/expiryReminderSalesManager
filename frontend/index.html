@@ -290,11 +290,18 @@
             }
         }
     </style>
+    <div class="language-switcher">
+        <select id="languageSelect" onchange="changeLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="pt">Português</option>
+        </select>
+    </div>
 </head>
 <body>
     <div class="header">
-        <h1>🛍️ Sales Manager</h1>
-        <p>Système de gestion de ventes et stock</p>
+        <h1 data-i18n="welcome.message">🛍️ Sales Manager</h1>
+        <p data-i18n="system.description">Système de gestion de ventes et stock</p>
     </div>
 
     <div class="container">
@@ -343,7 +350,7 @@
                 <span>Connecté en tant que: <strong id="currentUser"></strong></span>
                 <div style="display: flex; gap: 0.5rem;">
                     <a href="reports.html" class="btn btn-secondary" style="text-decoration: none;">📊 Rapports</a>
-                    <a href="inventory.html" class="btn btn-secondary" style="text-decoration: none;">📦 Inventaire</a>
+<a href="inventory.html" class="btn btn-secondary" style="text-decoration: none;" data-i18n="inventory">📦 Inventaire</a>
                     <button id="logoutBtn" class="btn btn-danger">Déconnexion</button>
                 </div>
             </div>

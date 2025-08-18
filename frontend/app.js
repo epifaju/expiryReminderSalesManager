@@ -2,6 +2,33 @@
 const API_BASE_URL = "http://localhost:8080";
 let authToken = localStorage.getItem("authToken");
 let currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+let currentLanguage = "en";
+
+// Translation functions
+async function loadTranslations(lang) {
+  try {
+    const response = await fetch(`lang/${lang}.json`);
+    return await response.json();
+  } catch (error) {
+    console.error("Error loading translations:", error);
+    return {};
+  }
+}
+
+async function changeLanguage(lang) {
+  currentLanguage = lang;
+  const translations = await loadTranslations(lang);
+  updateTextElements(translations);
+}
+
+function updateTextElements(translations) {
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    const key = element.dataset.i18n;
+    if (translations[key]) {
+      element.textContent = translations[key];
+    }
+  });
+}
 
 // DOM Elements
 const authSection = document.getElementById("authSection");
@@ -13,6 +40,9 @@ const currentUserSpan = document.getElementById("currentUser");
 
 // Initialize app
 document.addEventListener("DOMContentLoaded", function () {
+  // Initialiser les traductions
+  changeLanguage(currentLanguage);
+
   if (authToken && currentUser.username) {
     showDashboard();
   } else {
@@ -732,3 +762,4 @@ window.deleteProduct = deleteProduct;
 window.removeSaleItemRow = removeSaleItemRow;
 window.viewSale = viewSale;
 window.loadExpirationAlerts = loadExpirationAlerts;
+window.changeLanguage = changeLanguage;

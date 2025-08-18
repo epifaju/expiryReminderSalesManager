@@ -1,0 +1,12 @@
+{
+  "welcome.message": "Welcome",
+  "system.description": "Sales and inventory management system",
+  "login.title": "Login",
+  "login.button": "Login",
+  "signup.title": "Sign Up",
+  "signup.button": "Register",
+  "logout": "Logout",
+  "product.list": "Products",
+  "reports": "Reports",
+  "inventory": "Inventory"
+}
