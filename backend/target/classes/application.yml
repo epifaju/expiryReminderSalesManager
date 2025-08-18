@@ -1,5 +1,6 @@
 server:
   port: 8081
+  address: 0.0.0.0
 
 spring:
   datasource:
@@ -54,6 +55,7 @@ cors:
     - http://localhost:8081
     - http://localhost:8083
     - http://10.0.2.2:8081
+    - http://192.168.1.27:8081
     - http://127.0.0.1:3000
   allowed-methods:
     - GET

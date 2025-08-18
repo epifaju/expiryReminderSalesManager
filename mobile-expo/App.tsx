@@ -21,10 +21,10 @@ const getApiUrls = () => {
   if (Platform.OS === 'web') {
     return ['http://localhost:8081'];
   } else {
-    // For Android emulator, try multiple options
+    // For Android emulator, try multiple options in order of preference
     return [
+      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
       'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://192.168.1.27:8081',  // Your actual IP address
       'http://localhost:8081'      // Sometimes works on some emulators
     ];
   }
