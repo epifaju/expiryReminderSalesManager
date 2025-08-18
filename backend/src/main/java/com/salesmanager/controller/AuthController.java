@@ -7,7 +7,9 @@ import com.salesmanager.exception.ResourceAlreadyExistsException;
 import com.salesmanager.security.JwtUtils;
 import com.salesmanager.security.UserDetailsImpl;
 import com.salesmanager.service.AuthService;
+import org.springframework.context.MessageSource;
 import org.springframework.security.core.Authentication;
+import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,10 +26,12 @@ public class AuthController {
     
     private final AuthService authService;
     private final JwtUtils jwtUtils;
+    private final MessageSource messageSource;
 
-    public AuthController(AuthService authService, JwtUtils jwtUtils) {
+    public AuthController(AuthService authService, JwtUtils jwtUtils, MessageSource messageSource) {
         this.authService = authService;
         this.jwtUtils = jwtUtils;
+        this.messageSource = messageSource;
     }
 
     @PostMapping("/signin")
