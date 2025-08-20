@@ -15,9 +15,10 @@ import SalesScreen from './src/screens/SalesScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import ExpiringProductsScreen from './src/screens/ExpiringProductsScreen';
 import authService from './src/services/authService';
 
-type TabType = 'dashboard' | 'products' | 'sales' | 'reports' | 'settings';
+type TabType = 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings';
 
 export default function App() {
   const [username, setUsername] = useState('admin');
@@ -123,6 +124,8 @@ export default function App() {
         return <SalesScreen token={token} />;
       case 'reports':
         return <ReportsScreen token={token} />;
+      case 'expiring':
+        return <ExpiringProductsScreen token={token} />;
       case 'settings':
         return <SettingsScreen onLogout={logout} />;
       default:
@@ -220,6 +223,14 @@ export default function App() {
         >
           <Text style={[styles.navIcon, activeTab === 'reports' && styles.activeNavIcon]}>📊</Text>
           <Text style={[styles.navText, activeTab === 'reports' && styles.activeNavText]}>Rapports</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.navItem, activeTab === 'expiring' && styles.activeNavItem]}
+          onPress={() => setActiveTab('expiring')}
+        >
+          <Text style={[styles.navIcon, activeTab === 'expiring' && styles.activeNavIcon]}>⚠️</Text>
+          <Text style={[styles.navText, activeTab === 'expiring' && styles.activeNavText]}>Expiration</Text>
         </TouchableOpacity>
         
         <TouchableOpacity

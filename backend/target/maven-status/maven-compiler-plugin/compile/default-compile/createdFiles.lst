@@ -21,6 +21,7 @@ com\salesmanager\service\ProductService.class
 com\salesmanager\config\JacksonConfig$1.class
 com\salesmanager\repository\SaleRepository.class
 com\salesmanager\security\JwtAuthenticationEntryPoint.class
+com\salesmanager\config\JacksonConfig$2.class
 com\salesmanager\security\JwtAuthenticationFilter.class
 com\salesmanager\entity\Sale$PaymentMethod.class
 com\salesmanager\entity\User.class

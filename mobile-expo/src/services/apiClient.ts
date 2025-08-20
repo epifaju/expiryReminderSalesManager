@@ -1,19 +1,18 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import authService from './authService';
 
 // Dynamic API URL based on platform with fallback options
 const getApiUrls = () => {
   if (Platform.OS === 'web') {
-    return ['http://localhost:8080'];
+    return ['http://localhost:8081'];
   } else {
     // For Android emulator, try multiple options in order of preference
-    // Backend Spring Boot runs on port 8080
+    // Backend Spring Boot runs on port 8081
     return [
-      'http://192.168.1.27:8080',  // Your actual IP address
-      'http://10.0.2.2:8080',      // Standard Android emulator localhost
-      'http://localhost:8080',     // Sometimes works on some emulators
-      'http://127.0.0.1:8080'      // Local loopback
+      'http://192.168.1.27:8081',  // Your actual IP address
+      'http://10.0.2.2:8081',      // Standard Android emulator localhost
+      'http://localhost:8081',     // Sometimes works on some emulators
+      'http://127.0.0.1:8081'      // Local loopback
     ];
   }
 };
@@ -22,11 +21,20 @@ const API_URLS = getApiUrls();
 let currentApiUrl = API_URLS[0];
 let isInitialized = false;
 
+// Token provider function - will be set by authService
+let getTokenCallback: (() => string | null) | null = null;
+
+// Function to set the token provider callback
+const setTokenProvider = (callback: () => string | null) => {
+  getTokenCallback = callback;
+};
+
 // Function to test API connectivity
 const testApiConnection = async (url: string): Promise<boolean> => {
   try {
     console.log(`🔍 Testing connection to: ${url}`);
-    const response = await axios.get(`${url}/auth/test`, { 
+    // Use a simple GET request to a known endpoint instead of /auth/test
+    const response = await axios.get(`${url}/products?size=1`, { 
       timeout: 5000,
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +85,7 @@ const updateApiClientBaseUrl = (newUrl: string) => {
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = authService.getToken();
+    const token = getTokenCallback ? getTokenCallback() : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -90,33 +98,14 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for better error handling with URL fallback
+// Response interceptor for better error handling
 apiClient.interceptors.response.use(
   (response) => {
     console.log('✅ API Response:', response.status, response.config.url);
     return response;
   },
-  async (error) => {
+  (error) => {
     console.error('❌ API Error:', error.message);
-    
-    // If network error, try to find a working URL
-    if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
-      console.log('🔄 Network error detected, trying to find working URL...');
-      
-      try {
-        const workingUrl = await findWorkingApiUrl();
-        updateApiClientBaseUrl(workingUrl);
-        
-        // Retry the original request with the new URL
-        const originalRequest = error.config;
-        originalRequest.baseURL = workingUrl;
-        console.log('🔄 Retrying request with new URL:', workingUrl);
-        
-        return apiClient(originalRequest);
-      } catch (urlError) {
-        console.error('❌ No working URL found for retry');
-      }
-    }
     
     if (error.response) {
       console.error('📄 Error response:', error.response.status, error.response.data);
@@ -142,4 +131,4 @@ const initializeApiClient = async (): Promise<void> => {
 };
 
 export default apiClient;
-export { findWorkingApiUrl, updateApiClientBaseUrl, testApiConnection, initializeApiClient };
+export { findWorkingApiUrl, updateApiClientBaseUrl, testApiConnection, initializeApiClient, setTokenProvider };

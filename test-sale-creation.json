@@ -1,0 +1,24 @@
+{
+  "customerName": "Client Test",
+  "customerPhone": "+33123456789",
+  "customerEmail": "test@example.com",
+  "paymentMethod": "CASH",
+  "saleDate": "2025-08-20T01:45:00.000Z",
+  "discountAmount": 0,
+  "taxAmount": 0,
+  "notes": "Test de création de vente",
+  "saleItems": [
+    {
+      "productId": 1,
+      "quantity": 2,
+      "unitPrice": 15.50,
+      "discount": 0
+    },
+    {
+      "productId": 2,
+      "quantity": 1,
+      "unitPrice": 25.00,
+      "discount": 0
+    }
+  ]
+}

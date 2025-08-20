@@ -107,6 +107,50 @@ class ProductService {
     }
   }
 
+  async getExpiringProducts(warningDays: number = 7) {
+    try {
+      const response = await apiClient.get(`/products/alerts/expiring?warningDays=${warningDays}`);
+      return response.data || [];
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits expirants:', error);
+      handleApiError(error);
+      throw error;
+    }
+  }
+
+  async getExpiredProducts() {
+    try {
+      const response = await apiClient.get('/products/alerts/expired');
+      return response.data || [];
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits expirés:', error);
+      handleApiError(error);
+      throw error;
+    }
+  }
+
+  async getLowStockProducts() {
+    try {
+      const response = await apiClient.get('/products/alerts/low-stock');
+      return response.data || [];
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits en stock faible:', error);
+      handleApiError(error);
+      throw error;
+    }
+  }
+
+  async getProductStats() {
+    try {
+      const response = await apiClient.get('/products/stats');
+      return response.data || {};
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques produits:', error);
+      handleApiError(error);
+      throw error;
+    }
+  }
+
   validateProductData(productData: ProductRequest): string[] {
     const errors: string[] = [];
 
@@ -139,6 +183,32 @@ class ProductService {
     }
 
     return errors;
+  }
+
+  // Utility methods for date handling
+  isExpired(expiryDate: string | null): boolean {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    return expiry < today;
+  }
+
+  isExpiringSoon(expiryDate: string | null, warningDays: number = 7): boolean {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const warningDate = new Date();
+    warningDate.setDate(today.getDate() + warningDays);
+    return expiry <= warningDate && expiry >= today;
+  }
+
+  getDaysUntilExpiry(expiryDate: string | null): number | null {
+    if (!expiryDate) return null;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   }
 }
 

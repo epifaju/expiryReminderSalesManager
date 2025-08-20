@@ -67,6 +67,7 @@ public class DataInitializer implements CommandLineRunner {
         if (productRepository.count() == 0) {
             List<Product> products = new ArrayList<>();
             
+            // Produit 1 - Expire dans 2 jours (expire bientôt)
             Product product1 = new Product();
             product1.setName("Smartphone Samsung Galaxy");
             product1.setDescription("Smartphone Android dernière génération");
@@ -74,11 +75,12 @@ public class DataInitializer implements CommandLineRunner {
             product1.setSellingPrice(new BigDecimal("699.99"));
             product1.setStockQuantity(25);
             product1.setMinStockLevel(5);
-            product1.setExpiryDate(LocalDate.now().plusYears(2));
+            product1.setExpiryDate(LocalDate.now().plusDays(2));
             product1.setCategory("Électronique");
             product1.setCreatedAt(LocalDateTime.now());
             products.add(product1);
 
+            // Produit 2 - Expire dans 5 jours (expire bientôt)
             Product product2 = new Product();
             product2.setName("Ordinateur Portable HP");
             product2.setDescription("Laptop 15 pouces, 8GB RAM, 256GB SSD");
@@ -86,11 +88,12 @@ public class DataInitializer implements CommandLineRunner {
             product2.setSellingPrice(new BigDecimal("899.99"));
             product2.setStockQuantity(15);
             product2.setMinStockLevel(3);
-            product2.setExpiryDate(LocalDate.now().plusYears(3));
+            product2.setExpiryDate(LocalDate.now().plusDays(5));
             product2.setCategory("Informatique");
             product2.setCreatedAt(LocalDateTime.now());
             products.add(product2);
 
+            // Produit 3 - Expiré il y a 3 jours (déjà expiré)
             Product product3 = new Product();
             product3.setName("Casque Audio Bluetooth");
             product3.setDescription("Casque sans fil avec réduction de bruit");
@@ -98,11 +101,12 @@ public class DataInitializer implements CommandLineRunner {
             product3.setSellingPrice(new BigDecimal("149.99"));
             product3.setStockQuantity(50);
             product3.setMinStockLevel(10);
-            product3.setExpiryDate(LocalDate.now().plusYears(1));
+            product3.setExpiryDate(LocalDate.now().minusDays(3));
             product3.setCategory("Audio");
             product3.setCreatedAt(LocalDateTime.now());
             products.add(product3);
 
+            // Produit 4 - Expire dans 10 jours (expire bientôt avec 14 jours d'alerte)
             Product product4 = new Product();
             product4.setName("Tablette iPad");
             product4.setDescription("Tablette Apple 10.9 pouces");
@@ -110,11 +114,12 @@ public class DataInitializer implements CommandLineRunner {
             product4.setSellingPrice(new BigDecimal("449.99"));
             product4.setStockQuantity(20);
             product4.setMinStockLevel(5);
-            product4.setExpiryDate(LocalDate.now().plusYears(2));
+            product4.setExpiryDate(LocalDate.now().plusDays(10));
             product4.setCategory("Électronique");
             product4.setCreatedAt(LocalDateTime.now());
             products.add(product4);
 
+            // Produit 5 - Expiré il y a 1 semaine (déjà expiré)
             Product product5 = new Product();
             product5.setName("Montre Connectée");
             product5.setDescription("Smartwatch avec GPS et monitoring santé");
@@ -122,10 +127,36 @@ public class DataInitializer implements CommandLineRunner {
             product5.setSellingPrice(new BigDecimal("299.99"));
             product5.setStockQuantity(30);
             product5.setMinStockLevel(8);
-            product5.setExpiryDate(LocalDate.now().plusYears(1));
+            product5.setExpiryDate(LocalDate.now().minusDays(7));
             product5.setCategory("Wearables");
             product5.setCreatedAt(LocalDateTime.now());
             products.add(product5);
+
+            // Produit 6 - Expire dans 25 jours (expire bientôt avec 30 jours d'alerte)
+            Product product6 = new Product();
+            product6.setName("Écouteurs Sans Fil");
+            product6.setDescription("Écouteurs Bluetooth avec étui de charge");
+            product6.setPurchasePrice(new BigDecimal("79.99"));
+            product6.setSellingPrice(new BigDecimal("99.99"));
+            product6.setStockQuantity(40);
+            product6.setMinStockLevel(10);
+            product6.setExpiryDate(LocalDate.now().plusDays(25));
+            product6.setCategory("Audio");
+            product6.setCreatedAt(LocalDateTime.now());
+            products.add(product6);
+
+            // Produit 7 - Expire dans 1 an (produit normal)
+            Product product7 = new Product();
+            product7.setName("Clavier Mécanique");
+            product7.setDescription("Clavier gaming RGB avec switches mécaniques");
+            product7.setPurchasePrice(new BigDecimal("89.99"));
+            product7.setSellingPrice(new BigDecimal("119.99"));
+            product7.setStockQuantity(35);
+            product7.setMinStockLevel(8);
+            product7.setExpiryDate(LocalDate.now().plusYears(1));
+            product7.setCategory("Informatique");
+            product7.setCreatedAt(LocalDateTime.now());
+            products.add(product7);
 
             products = productRepository.saveAll(products);
             System.out.println("✅ " + products.size() + " produits de démonstration créés !");

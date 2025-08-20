@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import { initializeApiClient, updateApiClientBaseUrl } from './apiClient';
+import { initializeApiClient, updateApiClientBaseUrl, setTokenProvider } from './apiClient';
 
 // Dynamic API URL based on platform with fallback options
 const getApiUrls = () => {
@@ -47,6 +47,11 @@ export interface AuthResponse {
 class AuthService {
   private token: string | null = null;
   private user: User | null = null;
+
+  constructor() {
+    // Set up the token provider callback to break the circular dependency
+    setTokenProvider(() => this.getToken());
+  }
 
   // Initialize auth service (simplified version without persistent storage)
   async initialize(): Promise<boolean> {
