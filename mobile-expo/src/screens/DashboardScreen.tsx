@@ -7,26 +7,8 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
-  Platform,
 } from 'react-native';
-import axios from 'axios';
-
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0];
+import productService from '../services/productService';
 
 interface Product {
   id: number;
@@ -65,18 +47,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
   const loadDashboardData = async () => {
     try {
       // Charger les données réelles depuis l'API
-      const response = await axios.get(`${API_BASE_URL}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      let products = [];
-      if (response.data && response.data.content) {
-        products = response.data.content;
-      } else if (Array.isArray(response.data)) {
-        products = response.data;
-      }
+      const products = await productService.getProducts();
 
       // Calculer les statistiques basées sur les données réelles
       const lowStockProducts = products.filter((p: Product) => p.stockQuantity < p.minStockLevel);
@@ -128,18 +99,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
 
   const handleStockAlerts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      let products = [];
-      if (response.data && response.data.content) {
-        products = response.data.content;
-      } else if (Array.isArray(response.data)) {
-        products = response.data;
-      }
+      const products = await productService.getProducts();
 
       const lowStockProducts = products.filter((p: Product) => p.stockQuantity < p.minStockLevel);
       

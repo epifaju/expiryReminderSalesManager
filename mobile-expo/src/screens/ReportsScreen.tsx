@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
+import { ExportService } from '../services/exportService';
 
 // Dynamic API URL based on platform with fallback options
 const getApiUrls = () => {
@@ -319,6 +320,45 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     setRefreshing(false);
   };
 
+  // Export functions
+  const handleExportPDF = async () => {
+    try {
+      const filteredSales = filterSalesByPeriod(sales, selectedPeriod);
+      await ExportService.exportReportToPDF(stats, selectedPeriod, filteredSales, products);
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      Alert.alert('Erreur', 'Impossible d\'exporter le rapport PDF');
+    }
+  };
+
+  const handleExportSalesCSV = async () => {
+    try {
+      const filteredSales = filterSalesByPeriod(sales, selectedPeriod);
+      await ExportService.exportSalesToCSV(filteredSales, selectedPeriod);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV des ventes:', error);
+      Alert.alert('Erreur', 'Impossible d\'exporter les ventes en CSV');
+    }
+  };
+
+  const handleExportProductsCSV = async () => {
+    try {
+      await ExportService.exportProductsToCSV(products);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV des produits:', error);
+      Alert.alert('Erreur', 'Impossible d\'exporter les produits en CSV');
+    }
+  };
+
+  const handleExportTopProductsCSV = async () => {
+    try {
+      await ExportService.exportTopProductsToCSV(stats.topSellingProducts, selectedPeriod);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV des top produits:', error);
+      Alert.alert('Erreur', 'Impossible d\'exporter les top produits en CSV');
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [selectedPeriod]);
@@ -388,7 +428,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
                 style={[
                   styles.bar,
                   {
-                    height: Math.max(20, (item.revenue / Math.max(...stats.salesByPeriod.map(s => s.revenue))) * 100),
+                    height: Math.max(20, stats.salesByPeriod.length > 0 && Math.max(...stats.salesByPeriod.map(s => s.revenue)) > 0 
+                      ? (item.revenue / Math.max(...stats.salesByPeriod.map(s => s.revenue))) * 100 
+                      : 20),
                     backgroundColor: '#667eea',
                   },
                 ]}
@@ -577,6 +619,50 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Export Section */}
+        <View style={styles.exportSection}>
+          <Text style={styles.exportTitle}>📤 Exporter les Données</Text>
+          <View style={styles.exportButtons}>
+            <TouchableOpacity
+              style={[styles.exportButton, styles.pdfButton]}
+              onPress={handleExportPDF}
+            >
+              <Text style={styles.exportButtonIcon}>📄</Text>
+              <Text style={styles.exportButtonText}>Rapport PDF</Text>
+              <Text style={styles.exportButtonSubtext}>Rapport complet</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.exportButton, styles.csvButton]}
+              onPress={handleExportSalesCSV}
+            >
+              <Text style={styles.exportButtonIcon}>📊</Text>
+              <Text style={styles.exportButtonText}>Ventes CSV</Text>
+              <Text style={styles.exportButtonSubtext}>Données de ventes</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.exportButtons}>
+            <TouchableOpacity
+              style={[styles.exportButton, styles.csvButton]}
+              onPress={handleExportProductsCSV}
+            >
+              <Text style={styles.exportButtonIcon}>📦</Text>
+              <Text style={styles.exportButtonText}>Produits CSV</Text>
+              <Text style={styles.exportButtonSubtext}>Liste des produits</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.exportButton, styles.csvButton]}
+              onPress={handleExportTopProductsCSV}
+            >
+              <Text style={styles.exportButtonIcon}>🏆</Text>
+              <Text style={styles.exportButtonText}>Top Produits CSV</Text>
+              <Text style={styles.exportButtonSubtext}>Meilleurs ventes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'profit' && <ProfitTab />}
@@ -875,6 +961,62 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     color: '#666',
+  },
+  exportSection: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  exportTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  exportButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  exportButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pdfButton: {
+    backgroundColor: '#dc3545',
+  },
+  csvButton: {
+    backgroundColor: '#28a745',
+  },
+  exportButtonIcon: {
+    fontSize: 24,
+    marginBottom: 5,
+  },
+  exportButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  exportButtonSubtext: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
 

@@ -11,24 +11,8 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import axios from 'axios';
-
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0];
+import saleService, { SaleRequest, PaymentMethod } from '../services/saleService';
+import apiClient from '../services/apiClient';
 
 interface Product {
   id: number;
@@ -80,11 +64,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const loadSales = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/sales`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get('/sales');
 
       let salesData = [];
       if (response.data && response.data.content) {
@@ -123,11 +103,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
 
   const loadProducts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get('/products');
 
       let productsData = [];
       if (response.data && response.data.content) {
@@ -206,22 +182,19 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     }
 
     try {
-      const saleData = {
-        customerName: customerName || 'Client',
-        paymentMethod,
-        items: saleItems.map(item => ({
+      const saleData: SaleRequest = {
+        customerName: customerName || undefined,
+        paymentMethod: paymentMethod as PaymentMethod,
+        saleDate: new Date().toISOString(), // Always provide current date
+        saleItems: saleItems.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          discount: 0 // Default discount
         }))
       };
 
-      await axios.post(`${API_BASE_URL}/sales`, saleData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      await saleService.createSale(saleData);
 
       Alert.alert('Succès', 'Vente créée avec succès');
       

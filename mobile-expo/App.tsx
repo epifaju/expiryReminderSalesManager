@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,29 +9,13 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import axios from 'axios';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ProductsScreen from './src/screens/ProductsScreen';
 import SalesScreen from './src/screens/SalesScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0]; // Default to first URL
+import RegisterScreen from './src/screens/RegisterScreen';
+import authService from './src/services/authService';
 
 type TabType = 'dashboard' | 'products' | 'sales' | 'reports' | 'settings';
 
@@ -41,64 +25,92 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [showRegister, setShowRegister] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const tryLogin = async (baseUrl: string) => {
-    console.log('Tentative de connexion à:', `${baseUrl}/auth/signin`);
-    
-    const response = await axios.post(`${baseUrl}/auth/signin`, {
-      username,
-      password,
-    }, {
-      timeout: 5000, // 5 seconds timeout
-    });
+  // Initialize auth service on app start
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const isAuthenticated = await authService.initialize();
+        if (isAuthenticated) {
+          setIsLoggedIn(true);
+          setToken(authService.getToken() || '');
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      }
+    };
 
-    return response;
-  };
+    initializeAuth();
+  }, []);
 
   const login = async () => {
-    console.log('Platform:', Platform.OS);
-    console.log('URLs disponibles:', API_URLS);
+    if (isLoading) return;
     
-    let lastError = null;
-    
-    // Try each URL in sequence
-    for (let i = 0; i < API_URLS.length; i++) {
-      const currentUrl = API_URLS[i];
-      try {
-        console.log(`Essai ${i + 1}/${API_URLS.length} avec URL:`, currentUrl);
-        
-        const response = await tryLogin(currentUrl);
-        
-        console.log('Réponse reçue:', response.data);
-
-        if (response.data && response.data.token) {
-          setToken(response.data.token);
-          setIsLoggedIn(true);
-          Alert.alert('Succès', `Connexion réussie !\nURL utilisée: ${currentUrl}`);
-          return; // Success, exit the function
-        }
-      } catch (error: any) {
-        console.error(`Erreur avec URL ${currentUrl}:`, error.message);
-        lastError = error;
-        
-        // If this is not the last URL, continue to the next one
-        if (i < API_URLS.length - 1) {
-          console.log('Tentative avec la prochaine URL...');
-          continue;
-        }
-      }
+    // Basic validation
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Erreur', 'Veuillez saisir un nom d\'utilisateur et un mot de passe');
+      return;
     }
     
-    // If we get here, all URLs failed
-    console.error('Toutes les URLs ont échoué. Dernière erreur:', lastError);
-    const errorMessage = lastError?.response?.data?.message || lastError?.message || 'Impossible de se connecter au serveur';
-    Alert.alert('Erreur', `${errorMessage}\n\nURLs essayées:\n${API_URLS.join('\n')}\n\nPlatform: ${Platform.OS}`);
+    setIsLoading(true);
+    console.log('🚀 Début de la tentative de connexion...');
+    
+    try {
+      console.log('📝 Tentative de connexion avec:', { username, password: '***' });
+      const authResponse = await authService.login({ username, password });
+      
+      console.log('✅ Connexion réussie:', authResponse);
+      setToken(authResponse.token);
+      setIsLoggedIn(true);
+      Alert.alert('Succès', 'Connexion réussie !');
+    } catch (error: any) {
+      console.error('❌ Erreur de connexion complète:', error);
+      console.error('📄 Message d\'erreur:', error.message);
+      console.error('🔍 Réponse du serveur:', error.response?.data);
+      console.error('📊 Status:', error.response?.status);
+      
+      let errorMessage = 'Impossible de se connecter au serveur';
+      let errorTitle = 'Erreur de connexion';
+      
+      if (error.message.includes('Nom d\'utilisateur ou mot de passe incorrect')) {
+        errorMessage = 'Nom d\'utilisateur ou mot de passe incorrect';
+        errorTitle = 'Authentification échouée';
+      } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+        errorMessage = 'Le serveur met trop de temps à répondre. Vérifiez votre connexion réseau.';
+        errorTitle = 'Timeout';
+      } else if (error.message.includes('Impossible de se connecter au serveur')) {
+        errorMessage = 'Impossible de se connecter au serveur. Assurez-vous que:\n\n• Le serveur backend est démarré\n• Votre connexion réseau fonctionne\n• L\'émulateur peut accéder au réseau';
+        errorTitle = 'Connexion impossible';
+      } else if (error.message.includes('Network Error') || error.code === 'NETWORK_ERROR') {
+        errorMessage = 'Erreur de réseau. Vérifiez votre connexion internet et que le serveur backend est démarré.';
+        errorTitle = 'Erreur réseau';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Erreur du serveur. Veuillez réessayer plus tard.';
+        errorTitle = 'Erreur serveur';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(errorTitle, errorMessage);
+    } finally {
+      setIsLoading(false);
+      console.log('🏁 Fin de la tentative de connexion');
+    }
   };
 
-  const logout = () => {
-    setIsLoggedIn(false);
-    setToken('');
-    setActiveTab('dashboard');
+  const logout = async () => {
+    try {
+      await authService.logout();
+      setIsLoggedIn(false);
+      setToken('');
+      setActiveTab('dashboard');
+      Alert.alert('Déconnexion', 'Vous avez été déconnecté avec succès');
+    } catch (error: any) {
+      console.error('Erreur de déconnexion:', error);
+      Alert.alert('Erreur', error.message || 'Erreur lors de la déconnexion');
+    }
   };
 
   const renderScreen = () => {
@@ -119,6 +131,15 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
+    if (showRegister) {
+      return (
+        <RegisterScreen
+          onBackToLogin={() => setShowRegister(false)}
+          onRegisterSuccess={() => setShowRegister(false)}
+        />
+      );
+    }
+
     return (
       <View style={styles.container}>
         <StatusBar style="auto" />
@@ -141,8 +162,18 @@ export default function App() {
           secureTextEntry
         />
         
-        <TouchableOpacity style={styles.button} onPress={login}>
-          <Text style={styles.buttonText}>Se connecter</Text>
+        <TouchableOpacity 
+          style={[styles.button, isLoading && styles.buttonDisabled]} 
+          onPress={login}
+          disabled={isLoading}
+        >
+          <Text style={styles.buttonText}>
+            {isLoading ? 'Connexion...' : 'Se connecter'}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.linkButton} onPress={() => setShowRegister(true)}>
+          <Text style={styles.linkText}>Pas de compte ? S'inscrire</Text>
         </TouchableOpacity>
       </View>
     );
@@ -283,5 +314,18 @@ const styles = StyleSheet.create({
   activeNavText: {
     color: '#007bff',
     fontWeight: 'bold',
+  },
+  linkButton: {
+    alignItems: 'center',
+    padding: 10,
+    marginTop: 15,
+  },
+  linkText: {
+    color: '#007bff',
+    fontSize: 16,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
 });

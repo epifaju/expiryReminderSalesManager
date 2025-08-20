@@ -8,26 +8,9 @@ import {
   TextInput,
   Alert,
   RefreshControl,
-  Platform,
 } from 'react-native';
-import axios from 'axios';
-
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0];
+import productService from '../services/productService';
+import DatePicker from '../components/DatePicker';
 
 interface Product {
   id: number;
@@ -65,25 +48,21 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
     minStockLevel: '5',
     category: '',
     unit: 'pcs',
+    manufacturingDate: '',
+    expiryDate: '',
   });
 
   const loadProducts = async () => {
     try {
       setLoading(true);
+      const productsData = await productService.getProducts();
+      console.log('📦 Données produits reçues:', productsData);
       
-      const response = await axios.get(`${API_BASE_URL}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.data && response.data.content) {
-        setProducts(response.data.content);
-      } else if (Array.isArray(response.data)) {
-        setProducts(response.data);
-      } else {
-        setProducts([]);
-      }
+      // S'assurer que nous avons un tableau
+      const productsArray = Array.isArray(productsData) ? productsData : [];
+      setProducts(productsArray);
+      
+      console.log('✅ Produits chargés:', productsArray.length);
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
       Alert.alert('Erreur', 'Impossible de charger les produits');
@@ -115,12 +94,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
         isActive: true,
       };
 
-      await axios.post(`${API_BASE_URL}/products`, productData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      await productService.createProduct(productData);
 
       Alert.alert('Succès', 'Produit ajouté avec succès');
       setShowAddForm(false);
@@ -134,6 +108,8 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
         minStockLevel: '5',
         category: '',
         unit: 'pcs',
+        manufacturingDate: '',
+        expiryDate: '',
       });
       loadProducts();
     } catch (error) {
@@ -248,6 +224,24 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
             placeholder="Unité (pcs, kg, l...)"
             value={newProduct.unit}
             onChangeText={(text) => setNewProduct({...newProduct, unit: text})}
+          />
+
+          <Text style={styles.sectionTitle}>📅 Dates (optionnel)</Text>
+          
+          <DatePicker
+            label="Date de fabrication"
+            value={newProduct.manufacturingDate}
+            onDateChange={(date) => setNewProduct({...newProduct, manufacturingDate: date})}
+            placeholder="Sélectionner la date de fabrication"
+            maximumDate={new Date().toISOString().split('T')[0]} // Cannot be in the future
+          />
+          
+          <DatePicker
+            label="Date d'expiration"
+            value={newProduct.expiryDate}
+            onDateChange={(date) => setNewProduct({...newProduct, expiryDate: date})}
+            placeholder="Sélectionner la date d'expiration"
+            minimumDate={newProduct.manufacturingDate || new Date().toISOString().split('T')[0]} // Must be after manufacturing date
           />
 
           <TouchableOpacity style={styles.addButton} onPress={addProduct}>
@@ -458,6 +452,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
   },
 });
 
