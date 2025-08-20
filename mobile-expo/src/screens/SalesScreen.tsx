@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,12 +33,23 @@ interface SaleItem {
 
 interface Sale {
   id: number;
+  saleNumber?: string;
   saleDate: string;
   totalAmount: number;
+  finalAmount?: number;
+  discountAmount?: number;
+  taxAmount?: number;
   paymentMethod: string;
   status: string;
   customerName?: string;
-  items: SaleItem[];
+  customerPhone?: string;
+  customerEmail?: string;
+  notes?: string;
+  saleItems?: SaleItem[];
+  totalProfit?: number;
+  totalQuantity?: number;
+  // Support for legacy field name
+  items?: SaleItem[];
 }
 
 interface SalesScreenProps {
@@ -66,12 +77,27 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       setLoading(true);
       const response = await apiClient.get('/sales');
 
+      console.log('🔍 Raw sales response:', JSON.stringify(response.data, null, 2));
+
       let salesData = [];
       if (response.data && response.data.content) {
         salesData = response.data.content;
       } else if (Array.isArray(response.data)) {
         salesData = response.data;
       }
+
+      console.log('📊 Processed sales data:', JSON.stringify(salesData, null, 2));
+
+      // Log each sale to understand the structure
+      salesData.forEach((sale: any, index: number) => {
+        console.log(`📋 Sale ${index + 1}:`, {
+          id: sale.id,
+          totalAmount: sale.totalAmount,
+          finalAmount: sale.finalAmount,
+          saleItems: sale.saleItems,
+          items: sale.items
+        });
+      });
 
       setSales(salesData);
     } catch (error) {
@@ -218,41 +244,57 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} €`;
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return '0.00 €';
+    }
+    return `${Number(amount).toFixed(2)} €`;
   };
 
-  const SaleCard: React.FC<{ sale: Sale }> = ({ sale }) => (
-    <View style={styles.saleCard}>
-      <View style={styles.saleHeader}>
-        <Text style={styles.saleId}>Vente #{sale.id}</Text>
-        <Text style={styles.saleAmount}>{formatCurrency(sale.totalAmount)}</Text>
-      </View>
-      
-      <View style={styles.saleDetails}>
-        <Text style={styles.saleDate}>{formatDate(sale.saleDate)}</Text>
-        <Text style={styles.saleCustomer}>{sale.customerName || 'Client'}</Text>
-      </View>
-      
-      <View style={styles.saleFooter}>
-        <Text style={styles.paymentMethod}>{sale.paymentMethod}</Text>
-        <Text style={[styles.status, { color: sale.status === 'COMPLETED' ? '#28a745' : '#ffc107' }]}>
-          {sale.status === 'COMPLETED' ? 'Terminée' : 'En cours'}
-        </Text>
-      </View>
-      
-      {sale.items && sale.items.length > 0 && (
-        <View style={styles.itemsList}>
-          <Text style={styles.itemsTitle}>Articles:</Text>
-          {sale.items.map((item, index) => (
-            <Text key={index} style={styles.itemText}>
-              • {item.productName} x{item.quantity} = {formatCurrency(item.totalPrice)}
-            </Text>
-          ))}
+  const SaleCard: React.FC<{ sale: Sale }> = ({ sale }) => {
+    // Calculate total from items if totalAmount is not available
+    const calculateTotalFromItems = () => {
+      const items = sale.saleItems || sale.items || [];
+      return items.reduce((total, item) => {
+        const itemTotal = item.totalPrice || (item.unitPrice * item.quantity) || 0;
+        return total + itemTotal;
+      }, 0);
+    };
+
+    const displayAmount = sale.totalAmount || sale.finalAmount || calculateTotalFromItems();
+    
+    return (
+      <View style={styles.saleCard}>
+        <View style={styles.saleHeader}>
+          <Text style={styles.saleId}>Vente #{sale.id}</Text>
+          <Text style={styles.saleAmount}>{formatCurrency(displayAmount)}</Text>
         </View>
-      )}
-    </View>
-  );
+        
+        <View style={styles.saleDetails}>
+          <Text style={styles.saleDate}>{formatDate(sale.saleDate)}</Text>
+          <Text style={styles.saleCustomer}>{sale.customerName || 'Client'}</Text>
+        </View>
+        
+        <View style={styles.saleFooter}>
+          <Text style={styles.paymentMethod}>{sale.paymentMethod}</Text>
+          <Text style={[styles.status, { color: sale.status === 'COMPLETED' ? '#28a745' : '#ffc107' }]}>
+            {sale.status === 'COMPLETED' ? 'Terminée' : 'En cours'}
+          </Text>
+        </View>
+        
+        {((sale.saleItems && sale.saleItems.length > 0) || (sale.items && sale.items.length > 0)) && (
+          <View style={styles.itemsList}>
+            <Text style={styles.itemsTitle}>Articles:</Text>
+            {(sale.saleItems || sale.items || []).map((item, index) => (
+              <Text key={index} style={styles.itemText}>
+                • {item.productName} x{item.quantity} = {formatCurrency(item.totalPrice || (item.unitPrice * item.quantity))}
+              </Text>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const ProductSelector = () => (
     <Modal visible={showProductSelector} animationType="slide" transparent>
@@ -288,8 +330,9 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     </Modal>
   );
 
+
   const NewSaleForm = () => (
-    <ScrollView style={styles.newSaleContainer}>
+    <ScrollView style={styles.newSaleContainer} keyboardShouldPersistTaps="handled">
       <Text style={styles.sectionTitle}>Nouvelle Vente</Text>
       
       {/* Customer Info */}
@@ -300,6 +343,10 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           value={customerName}
           onChangeText={setCustomerName}
           placeholder="Nom du client"
+          autoCorrect={false}
+          autoCapitalize="words"
+          blurOnSubmit={false}
+          returnKeyType="done"
         />
       </View>
 
@@ -349,6 +396,9 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                 onChangeText={setQuantity}
                 keyboardType="numeric"
                 placeholder="1"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                returnKeyType="done"
               />
               <TouchableOpacity style={styles.addItemButton} onPress={addItemToSale}>
                 <Text style={styles.addItemButtonText}>Ajouter</Text>

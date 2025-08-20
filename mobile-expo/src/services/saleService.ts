@@ -48,14 +48,24 @@ export interface SaleItemResponse {
 
 export interface SaleResponse {
   id: number;
-  customerName?: string;
-  items: SaleItemResponse[];
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  paymentMethod: PaymentMethod;
+  saleNumber?: string;
   saleDate: string;
+  totalAmount: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  finalAmount?: number;
+  paymentMethod: PaymentMethod;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  notes?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdByUsername?: string;
+  saleItems: SaleItemResponse[];
+  totalProfit?: number;
+  totalQuantity?: number;
 }
 
 export interface SaleItemRequest {
