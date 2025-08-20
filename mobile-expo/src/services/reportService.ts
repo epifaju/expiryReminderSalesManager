@@ -11,10 +11,16 @@ export interface Product {
 
 export interface Sale {
   id: number;
+  saleNumber?: string;
   saleDate: string;
   totalAmount: number;
-  paymentMethod: string;
-  status: string;
+  finalAmount?: number;
+  paymentMethod: 'CASH' | 'CARD' | 'TRANSFER';
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  saleItems?: SaleItem[];
+  totalProfit?: number;
+  totalQuantity?: number;
+  // Support for legacy field name
   items?: SaleItem[];
 }
 
@@ -105,23 +111,28 @@ class ReportService {
   private calculateStats(salesData: Sale[], productsData: Product[], selectedPeriod: string): ReportStats {
     const filteredSales = this.filterSalesByPeriod(salesData, selectedPeriod);
     
-    // Basic stats
+    // Basic stats with validation
     const totalSales = filteredSales.length;
-    const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalRevenue = filteredSales.reduce((sum, sale) => {
+      const amount = sale.finalAmount || sale.totalAmount || 0;
+      return sum + (typeof amount === 'number' ? amount : 0);
+    }, 0);
     const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Top selling products
+    // Top selling products - handle both saleItems and items field names
     const productSales: { [key: string]: { quantity: number; revenue: number } } = {};
     filteredSales.forEach(sale => {
-      if (sale.items) {
-        sale.items.forEach(item => {
+      // Use saleItems if available, otherwise fall back to items
+      const items = sale.saleItems || sale.items || [];
+      items.forEach(item => {
+        if (item && item.productName && typeof item.quantity === 'number' && typeof item.totalPrice === 'number') {
           if (!productSales[item.productName]) {
             productSales[item.productName] = { quantity: 0, revenue: 0 };
           }
           productSales[item.productName].quantity += item.quantity;
           productSales[item.productName].revenue += item.totalPrice;
-        });
-      }
+        }
+      });
     });
 
     const topSellingProducts = Object.entries(productSales)
@@ -133,14 +144,17 @@ class ReportService {
       .sort((a, b) => b.totalQuantity - a.totalQuantity)
       .slice(0, 5);
 
-    // Sales by payment method
+    // Sales by payment method with validation
     const paymentMethods: { [key: string]: { count: number; amount: number } } = {};
     filteredSales.forEach(sale => {
-      if (!paymentMethods[sale.paymentMethod]) {
-        paymentMethods[sale.paymentMethod] = { count: 0, amount: 0 };
+      const method = sale.paymentMethod || 'UNKNOWN';
+      const amount = sale.finalAmount || sale.totalAmount || 0;
+      
+      if (!paymentMethods[method]) {
+        paymentMethods[method] = { count: 0, amount: 0 };
       }
-      paymentMethods[sale.paymentMethod].count += 1;
-      paymentMethods[sale.paymentMethod].amount += sale.totalAmount;
+      paymentMethods[method].count += 1;
+      paymentMethods[method].amount += (typeof amount === 'number' ? amount : 0);
     });
 
     const salesByPaymentMethod = Object.entries(paymentMethods).map(([method, data]) => ({
@@ -152,14 +166,23 @@ class ReportService {
     // Sales by period (daily for last 7 days)
     const salesByPeriod = this.generatePeriodData(filteredSales, selectedPeriod);
 
-    // Profit analysis
+    // Profit analysis with better validation
     let totalCost = 0;
     filteredSales.forEach(sale => {
-      if (sale.items) {
-        sale.items.forEach(item => {
-          const product = productsData.find(p => p.id === item.productId);
-          if (product) {
-            totalCost += product.purchasePrice * item.quantity;
+      // Use totalProfit from backend if available
+      if (sale.totalProfit && typeof sale.totalProfit === 'number') {
+        // If backend provides totalProfit, we can calculate totalCost
+        const saleRevenue = sale.finalAmount || sale.totalAmount || 0;
+        totalCost += saleRevenue - sale.totalProfit;
+      } else {
+        // Calculate from items if totalProfit not available
+        const items = sale.saleItems || sale.items || [];
+        items.forEach(item => {
+          if (item && typeof item.productId === 'number' && typeof item.quantity === 'number') {
+            const product = productsData.find(p => p.id === item.productId);
+            if (product && typeof product.purchasePrice === 'number') {
+              totalCost += product.purchasePrice * item.quantity;
+            }
           }
         });
       }

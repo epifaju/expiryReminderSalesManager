@@ -30,7 +30,7 @@ interface DashboardStats {
 
 interface DashboardScreenProps {
   token: string;
-  onNavigate: (tab: 'dashboard' | 'products' | 'sales' | 'reports' | 'settings') => void;
+  onNavigate: (tab: 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings') => void;
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) => {
@@ -125,15 +125,40 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
     }
   };
 
+  // Fonctions de navigation pour les cartes de statistiques
+  const handleTodaySalesClick = () => {
+    onNavigate('sales');
+  };
+
+  const handleProductsStockClick = () => {
+    onNavigate('products');
+  };
+
+  const handleExpiringProductsClick = () => {
+    onNavigate('expiring');
+  };
+
+  const handleExpiredProductsClick = () => {
+    onNavigate('expiring');
+  };
+
   const StatCard: React.FC<{
     title: string;
     value: string | number;
     color: string;
-  }> = ({title, value, color}) => (
-    <View style={[styles.statCard, {borderLeftColor: color}]}>
+    onPress?: () => void;
+  }> = ({title, value, color, onPress}) => (
+    <TouchableOpacity 
+      style={[styles.statCard, {borderLeftColor: color}]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <Text style={styles.statTitle}>{title}</Text>
       <Text style={styles.statValue}>{value}</Text>
-    </View>
+      {onPress && (
+        <Text style={styles.clickHint}>Appuyez pour voir</Text>
+      )}
+    </TouchableOpacity>
   );
 
   return (
@@ -158,11 +183,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
               title="📊 Ventes Aujourd'hui"
               value={stats.todaySales}
               color="#667eea"
+              onPress={handleTodaySalesClick}
             />
             <StatCard
               title="📦 Produits en Stock"
               value={stats.totalProducts}
               color="#28a745"
+              onPress={handleProductsStockClick}
             />
           </View>
 
@@ -184,11 +211,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
               title="⏰ Produits Expirants"
               value={stats.expiringProducts}
               color="#ff9800"
+              onPress={handleExpiringProductsClick}
             />
             <StatCard
               title="❌ Produits Expirés"
               value={stats.expiredProducts}
               color="#dc3545"
+              onPress={handleExpiredProductsClick}
             />
           </View>
         </View>
@@ -324,6 +353,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  clickHint: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 5,
   },
   section: {
     paddingHorizontal: 15,

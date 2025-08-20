@@ -40,10 +40,16 @@ interface Product {
 
 interface Sale {
   id: number;
+  saleNumber?: string;
   saleDate: string;
   totalAmount: number;
-  paymentMethod: string;
-  status: string;
+  finalAmount?: number;
+  paymentMethod: 'CASH' | 'CARD' | 'TRANSFER';
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  saleItems?: SaleItem[];
+  totalProfit?: number;
+  totalQuantity?: number;
+  // Support for legacy field name
   items?: SaleItem[];
 }
 
@@ -148,13 +154,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
       // Fallback avec des données simulées
-      const mockSales = [
+      const mockSales: Sale[] = [
         {
           id: 1,
           saleDate: new Date().toISOString(),
           totalAmount: 45.50,
-          paymentMethod: 'CASH',
-          status: 'COMPLETED',
+          paymentMethod: 'CASH' as const,
+          status: 'COMPLETED' as const,
           items: [
             { productId: 1, productName: 'Coca-Cola 33cl', quantity: 2, unitPrice: 1.50, totalPrice: 3.00 },
             { productId: 2, productName: 'Pain de mie', quantity: 1, unitPrice: 2.50, totalPrice: 2.50 }
@@ -164,8 +170,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
           id: 2,
           saleDate: new Date(Date.now() - 86400000).toISOString(),
           totalAmount: 32.00,
-          paymentMethod: 'CARD',
-          status: 'COMPLETED',
+          paymentMethod: 'CARD' as const,
+          status: 'COMPLETED' as const,
           items: [
             { productId: 1, productName: 'Coca-Cola 33cl', quantity: 3, unitPrice: 1.50, totalPrice: 4.50 }
           ]
