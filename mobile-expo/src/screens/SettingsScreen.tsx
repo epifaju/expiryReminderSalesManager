@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, Alert} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView} from 'react-native';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -30,7 +30,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
         <Text style={styles.headerTitle}>⚙️ Paramètres</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Compte</Text>
           
@@ -115,7 +115,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
           <Text style={styles.versionText}>Sales Manager Mobile</Text>
           <Text style={styles.versionNumber}>Version 1.0.0</Text>
         </View>
-      </View>
+        
+        {/* Extra space at bottom to ensure scrollability */}
+        <View style={{ height: 50 }} />
+      </ScrollView>
     </View>
   );
 };

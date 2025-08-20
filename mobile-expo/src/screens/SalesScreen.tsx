@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Platform,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import saleService, { SaleRequest, PaymentMethod } from '../services/saleService';
 import apiClient from '../services/apiClient';
@@ -71,6 +72,10 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [showProductSelector, setShowProductSelector] = useState(false);
+
+  // Create refs for TextInputs to maintain focus
+  const customerNameRef = useRef<TextInput>(null);
+  const quantityRef = useRef<TextInput>(null);
 
   const loadSales = async () => {
     try {
@@ -330,122 +335,139 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     </Modal>
   );
 
-
   const NewSaleForm = () => (
-    <ScrollView style={styles.newSaleContainer} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sectionTitle}>Nouvelle Vente</Text>
-      
-      {/* Customer Info */}
-      <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Nom du client (optionnel)</Text>
-        <TextInput
-          style={styles.input}
-          value={customerName}
-          onChangeText={setCustomerName}
-          placeholder="Nom du client"
-          autoCorrect={false}
-          autoCapitalize="words"
-          blurOnSubmit={false}
-          returnKeyType="done"
-        />
-      </View>
-
-      {/* Payment Method */}
-      <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Méthode de paiement</Text>
-        <View style={styles.paymentMethods}>
-          {['CASH', 'CARD', 'TRANSFER'].map((method) => (
-            <TouchableOpacity
-              key={method}
-              style={[
-                styles.paymentButton,
-                paymentMethod === method && styles.paymentButtonActive
-              ]}
-              onPress={() => setPaymentMethod(method)}
-            >
-              <Text style={[
-                styles.paymentButtonText,
-                paymentMethod === method && styles.paymentButtonTextActive
-              ]}>
-                {method === 'CASH' ? 'Espèces' : method === 'CARD' ? 'Carte' : 'Virement'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Add Product */}
-      <View style={styles.formSection}>
-        <Text style={styles.formLabel}>Ajouter un produit</Text>
-        <TouchableOpacity
-          style={styles.addProductButton}
-          onPress={() => setShowProductSelector(true)}
-        >
-          <Text style={styles.addProductButtonText}>
-            {selectedProduct ? selectedProduct.name : 'Sélectionner un produit'}
-          </Text>
-        </TouchableOpacity>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    >
+      <ScrollView 
+        style={styles.newSaleContainer} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.sectionTitle}>Nouvelle Vente</Text>
         
-        {selectedProduct && (
-          <View style={styles.quantitySection}>
-            <Text style={styles.formLabel}>Quantité</Text>
-            <View style={styles.quantityContainer}>
-              <TextInput
-                style={styles.quantityInput}
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="numeric"
-                placeholder="1"
-                autoCorrect={false}
-                blurOnSubmit={false}
-                returnKeyType="done"
-              />
-              <TouchableOpacity style={styles.addItemButton} onPress={addItemToSale}>
-                <Text style={styles.addItemButtonText}>Ajouter</Text>
+        {/* Customer Info */}
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Nom du client (optionnel)</Text>
+          <TextInput
+            ref={customerNameRef}
+            style={styles.input}
+            value={customerName}
+            onChangeText={(text) => {
+              setCustomerName(text);
+            }}
+            placeholder="Nom du client"
+            autoCorrect={false}
+            autoCapitalize="words"
+            blurOnSubmit={false}
+            returnKeyType="done"
+            textContentType="name"
+          />
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Méthode de paiement</Text>
+          <View style={styles.paymentMethods}>
+            {['CASH', 'CARD', 'TRANSFER'].map((method) => (
+              <TouchableOpacity
+                key={method}
+                style={[
+                  styles.paymentButton,
+                  paymentMethod === method && styles.paymentButtonActive
+                ]}
+                onPress={() => setPaymentMethod(method)}
+              >
+                <Text style={[
+                  styles.paymentButtonText,
+                  paymentMethod === method && styles.paymentButtonTextActive
+                ]}>
+                  {method === 'CASH' ? 'Espèces' : method === 'CARD' ? 'Carte' : 'Virement'}
+                </Text>
               </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Add Product */}
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Ajouter un produit</Text>
+          <TouchableOpacity
+            style={styles.addProductButton}
+            onPress={() => setShowProductSelector(true)}
+          >
+            <Text style={styles.addProductButtonText}>
+              {selectedProduct ? selectedProduct.name : 'Sélectionner un produit'}
+            </Text>
+          </TouchableOpacity>
+          
+          {selectedProduct && (
+            <View style={styles.quantitySection}>
+              <Text style={styles.formLabel}>Quantité</Text>
+              <View style={styles.quantityContainer}>
+                <TextInput
+                  ref={quantityRef}
+                  style={styles.quantityInput}
+                  value={quantity}
+                  onChangeText={(text) => {
+                    setQuantity(text);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="1"
+                  autoCorrect={false}
+                  blurOnSubmit={false}
+                  returnKeyType="done"
+                  selectTextOnFocus={true}
+                />
+                <TouchableOpacity style={styles.addItemButton} onPress={addItemToSale}>
+                  <Text style={styles.addItemButtonText}>Ajouter</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Sale Items */}
+        {saleItems.length > 0 && (
+          <View style={styles.formSection}>
+            <Text style={styles.formLabel}>Articles de la vente</Text>
+            {saleItems.map((item, index) => (
+              <View key={index} style={styles.saleItemRow}>
+                <View style={styles.saleItemInfo}>
+                  <Text style={styles.saleItemName}>{item.productName}</Text>
+                  <Text style={styles.saleItemDetails}>
+                    {item.quantity} x {formatCurrency(item.unitPrice)} = {formatCurrency(item.totalPrice)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeItemButton}
+                  onPress={() => removeItemFromSale(item.productId)}
+                >
+                  <Text style={styles.removeItemButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            
+            <View style={styles.totalSection}>
+              <Text style={styles.totalText}>Total: {formatCurrency(getTotalAmount())}</Text>
             </View>
           </View>
         )}
-      </View>
 
-      {/* Sale Items */}
-      {saleItems.length > 0 && (
-        <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Articles de la vente</Text>
-          {saleItems.map((item, index) => (
-            <View key={index} style={styles.saleItemRow}>
-              <View style={styles.saleItemInfo}>
-                <Text style={styles.saleItemName}>{item.productName}</Text>
-                <Text style={styles.saleItemDetails}>
-                  {item.quantity} x {formatCurrency(item.unitPrice)} = {formatCurrency(item.totalPrice)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.removeItemButton}
-                onPress={() => removeItemFromSale(item.productId)}
-              >
-                <Text style={styles.removeItemButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-          
-          <View style={styles.totalSection}>
-            <Text style={styles.totalText}>Total: {formatCurrency(getTotalAmount())}</Text>
-          </View>
-        </View>
-      )}
+        {/* Create Sale Button */}
+        <TouchableOpacity
+          style={[styles.createSaleButton, saleItems.length === 0 && styles.createSaleButtonDisabled]}
+          onPress={createSale}
+          disabled={saleItems.length === 0}
+        >
+          <Text style={styles.createSaleButtonText}>Créer la Vente</Text>
+        </TouchableOpacity>
 
-      {/* Create Sale Button */}
-      <TouchableOpacity
-        style={[styles.createSaleButton, saleItems.length === 0 && styles.createSaleButtonDisabled]}
-        onPress={createSale}
-        disabled={saleItems.length === 0}
-      >
-        <Text style={styles.createSaleButtonText}>Créer la Vente</Text>
-      </TouchableOpacity>
-
-      <ProductSelector />
-    </ScrollView>
+        <ProductSelector />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 
   return (
