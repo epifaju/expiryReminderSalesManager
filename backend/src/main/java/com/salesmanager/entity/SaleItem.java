@@ -55,7 +55,9 @@ public class SaleItem {
     @PreUpdate
     protected void calculateSubtotal() {
         if (unitPrice != null && quantity != null) {
-            subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity)).subtract(discount);
+            // Ensure discount is not null
+            BigDecimal discountAmount = (discount != null) ? discount : BigDecimal.ZERO;
+            subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity)).subtract(discountAmount);
         }
         
         // Store product details for historical accuracy

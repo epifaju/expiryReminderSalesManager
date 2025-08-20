@@ -96,8 +96,17 @@ public class Sale {
     
     // Business methods
     public void calculateTotals() {
+        // Ensure discount and tax amounts are not null
+        if (discountAmount == null) {
+            discountAmount = BigDecimal.ZERO;
+        }
+        if (taxAmount == null) {
+            taxAmount = BigDecimal.ZERO;
+        }
+        
         totalAmount = saleItems.stream()
             .map(SaleItem::getSubtotal)
+            .filter(subtotal -> subtotal != null)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         finalAmount = totalAmount.subtract(discountAmount).add(taxAmount);

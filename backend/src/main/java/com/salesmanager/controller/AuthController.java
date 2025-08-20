@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
     
     private final AuthService authService;
@@ -32,6 +35,15 @@ public class AuthController {
         this.authService = authService;
         this.jwtUtils = jwtUtils;
         this.messageSource = messageSource;
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, String>> testConnection() {
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "OK");
+        response.put("message", "Backend is running");
+        response.put("timestamp", java.time.LocalDateTime.now().toString());
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/signin")

@@ -18,11 +18,13 @@ com\salesmanager\SalesManagerApplication.class
 com\salesmanager\config\DataInitializer.class
 com\salesmanager\dto\SaleItemResponse.class
 com\salesmanager\service\ProductService.class
+com\salesmanager\config\JacksonConfig$1.class
 com\salesmanager\repository\SaleRepository.class
 com\salesmanager\security\JwtAuthenticationEntryPoint.class
 com\salesmanager\security\JwtAuthenticationFilter.class
 com\salesmanager\entity\Sale$PaymentMethod.class
 com\salesmanager\entity\User.class
+com\salesmanager\config\JacksonConfig.class
 com\salesmanager\controller\SaleController.class
 com\salesmanager\dto\ProductResponse.class
 com\salesmanager\config\SecurityConfig.class

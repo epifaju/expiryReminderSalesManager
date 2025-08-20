@@ -1,5 +1,6 @@
 package com.salesmanager.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.salesmanager.entity.Sale;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -12,6 +13,7 @@ import java.util.List;
 public class SaleRequest {
     
     @NotNull(message = "Sale date is required")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
     private LocalDateTime saleDate;
     
     private BigDecimal discountAmount = BigDecimal.ZERO;
