@@ -20,6 +20,16 @@ interface Product {
   category: string;
 }
 
+interface Sale {
+  id: number;
+  saleDate: string;
+  totalAmount?: number;
+  finalAmount?: number;
+  customerName?: string;
+  paymentMethod?: string;
+  status?: string;
+}
+
 interface DashboardStats {
   todaySales: number;
   totalProducts: number;
@@ -27,6 +37,14 @@ interface DashboardStats {
   lowStock: number;
   expiringProducts: number;
   expiredProducts: number;
+}
+
+interface ActivityItem {
+  id: string;
+  type: 'sale' | 'product' | 'stock_alert' | 'expiry';
+  icon: string;
+  text: string;
+  timestamp: Date;
 }
 
 interface DashboardScreenProps {
@@ -43,6 +61,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
     expiringProducts: 0,
     expiredProducts: 0,
   });
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Fonction pour formater les montants monétaires
@@ -53,6 +72,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);
+  };
+
+  const formatTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'À l\'instant';
+    if (diffInMinutes < 60) return `Il y a ${diffInMinutes}min`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `Il y a ${diffInHours}h`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `Il y a ${diffInDays}j`;
+    
+    return date.toLocaleDateString('fr-FR');
   };
 
   const loadDashboardData = async () => {
@@ -100,6 +135,62 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
           }
           return sum + amount;
         }, 0);
+
+      // Générer l'activité récente basée sur les données réelles
+      const activity: ActivityItem[] = [];
+
+      // Ajouter les ventes récentes (dernières 48h)
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
+      const recentSales = sales
+        .filter(sale => {
+          const saleDate = new Date(sale.saleDate);
+          return saleDate >= twoDaysAgo;
+        })
+        .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+        .slice(0, 3); // Prendre les 3 ventes les plus récentes
+
+      recentSales.forEach((sale: Sale, index: number) => {
+        const amount = sale.finalAmount || sale.totalAmount || 0;
+        const customerName = sale.customerName || 'Client';
+        activity.push({
+          id: `sale-${sale.id}`,
+          type: 'sale',
+          icon: '🛒',
+          text: `Vente #${sale.id} - ${formatCurrency(amount)} - ${customerName}`,
+          timestamp: new Date(sale.saleDate)
+        });
+      });
+
+      // Ajouter les alertes de stock faible
+      lowStockProducts.slice(0, 2).forEach((product: Product, index: number) => {
+        activity.push({
+          id: `stock-${product.id}`,
+          type: 'stock_alert',
+          icon: '⚠️',
+          text: `Stock faible: ${product.name} (${product.stockQuantity} unités)`,
+          timestamp: new Date(Date.now() - (index + 1) * 3600000) // Simuler des timestamps échelonnés
+        });
+      });
+
+      // Ajouter les produits expirants
+      expiringProducts.slice(0, 2).forEach((product: Product, index: number) => {
+        activity.push({
+          id: `expiring-${product.id}`,
+          type: 'expiry',
+          icon: '⏰',
+          text: `Expire bientôt: ${product.name}`,
+          timestamp: new Date(Date.now() - (index + 3) * 3600000) // Simuler des timestamps échelonnés
+        });
+      });
+
+      // Trier par timestamp décroissant et prendre les 5 plus récents
+      const sortedActivity = activity
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        .slice(0, 5);
+
+      setRecentActivity(sortedActivity);
       
       setStats({
         todaySales: todaySales.length,
@@ -120,6 +211,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
         expiringProducts: 0,
         expiredProducts: 0,
       });
+      setRecentActivity([]);
     }
   };
 
@@ -317,26 +409,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
           <Text style={styles.sectionTitle}>Activité Récente</Text>
           
           <View style={styles.activityCard}>
-            <View style={styles.activityItem}>
-              <Text style={styles.activityIcon}>🛒</Text>
-              <Text style={styles.activityText}>
-                Vente #1234 - 45.50 € - Il y a 2h
-              </Text>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <Text style={styles.activityIcon}>📦</Text>
-              <Text style={styles.activityText}>
-                Produit ajouté: Café Premium - Il y a 4h
-              </Text>
-            </View>
-            
-            <View style={styles.activityItem}>
-              <Text style={styles.activityIcon}>⚠️</Text>
-              <Text style={styles.activityText}>
-                Stock faible: Lait UHT (5 unités) - Il y a 6h
-              </Text>
-            </View>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((item) => (
+                <View key={item.id} style={styles.activityItem}>
+                  <Text style={styles.activityIcon}>{item.icon}</Text>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityText}>{item.text}</Text>
+                    <Text style={styles.activityTime}>{formatTimeAgo(item.timestamp)}</Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.activityItem}>
+                <Text style={styles.activityIcon}>📝</Text>
+                <Text style={styles.activityText}>
+                  Aucune activité récente
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -463,17 +553,29 @@ const styles = StyleSheet.create({
   },
   activityItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   activityIcon: {
     fontSize: 20,
-    marginRight: 10,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  activityContent: {
+    flex: 1,
   },
   activityText: {
-    flex: 1,
     fontSize: 14,
     color: '#333',
+    marginBottom: 2,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
 
