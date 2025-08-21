@@ -96,6 +96,24 @@ export enum PaymentMethod {
 }
 
 class SaleService {
+  async getSales(): Promise<SaleResponse[]> {
+    try {
+      const response = await apiClient.get('/sales');
+      
+      if (response.data && response.data.content) {
+        return response.data.content;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error loading sales:', error);
+      handleApiError(error);
+      throw error;
+    }
+  }
+
   async createSale(saleData: SaleRequest) {
     try {
       // Ensure saleDate is always provided

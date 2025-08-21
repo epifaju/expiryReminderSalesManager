@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import productService from '../services/productService';
+import { reportService } from '../services/reportService';
 
 interface Product {
   id: number;
@@ -44,32 +45,80 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
   });
   const [refreshing, setRefreshing] = useState(false);
 
+  // Fonction pour formater les montants monétaires
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   const loadDashboardData = async () => {
     try {
       // Charger les données réelles depuis l'API
-      const products = await productService.getProducts();
+      const [products, sales, expiringProducts, expiredProducts] = await Promise.all([
+        productService.getProducts(),
+        reportService.getSales(),
+        productService.getExpiringProducts(7), // Produits expirant dans 7 jours
+        productService.getExpiredProducts()
+      ]);
+
+      // Calculer les ventes d'aujourd'hui
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todaySales = sales.filter(sale => {
+        const saleDate = new Date(sale.saleDate);
+        saleDate.setHours(0, 0, 0, 0);
+        return saleDate.getTime() === today.getTime();
+      });
 
       // Calculer les statistiques basées sur les données réelles
       const lowStockProducts = products.filter((p: Product) => p.stockQuantity < p.minStockLevel);
       
+      // Calculer les revenus du mois avec une meilleure précision
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      const monthlyRevenue = sales
+        .filter(sale => {
+          if (!sale.saleDate) return false;
+          const saleDate = new Date(sale.saleDate);
+          // Vérifier que la date est valide
+          if (isNaN(saleDate.getTime())) return false;
+          return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, sale) => {
+          // Prioriser finalAmount, puis totalAmount, en s'assurant que c'est un nombre valide
+          let amount = 0;
+          if (typeof sale.finalAmount === 'number' && !isNaN(sale.finalAmount)) {
+            amount = sale.finalAmount;
+          } else if (typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount)) {
+            amount = sale.totalAmount;
+          }
+          return sum + amount;
+        }, 0);
+      
       setStats({
-        todaySales: 15, // Simulé pour l'instant
+        todaySales: todaySales.length,
         totalProducts: products.length,
-        monthlyRevenue: 12500, // Simulé pour l'instant
+        monthlyRevenue: Math.round(monthlyRevenue),
         lowStock: lowStockProducts.length,
-        expiringProducts: 12, // Simulé pour l'instant
-        expiredProducts: 3, // Simulé pour l'instant
+        expiringProducts: expiringProducts.length,
+        expiredProducts: expiredProducts.length,
       });
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
-      // Fallback vers des données simulées
+      // Fallback vers des données simulées en cas d'erreur
       setStats({
-        todaySales: 15,
-        totalProducts: 245,
-        monthlyRevenue: 12500,
-        lowStock: 8,
-        expiringProducts: 12,
-        expiredProducts: 3,
+        todaySales: 0,
+        totalProducts: 0,
+        monthlyRevenue: 0,
+        lowStock: 0,
+        expiringProducts: 0,
+        expiredProducts: 0,
       });
     }
   };
@@ -196,7 +245,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
           <View style={styles.statsRow}>
             <StatCard
               title="💰 Revenus du Mois"
-              value={`${stats.monthlyRevenue} €`}
+              value={formatCurrency(stats.monthlyRevenue)}
               color="#764ba2"
             />
             <StatCard
