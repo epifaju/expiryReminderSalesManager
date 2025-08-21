@@ -12,22 +12,8 @@ import {
 import axios from 'axios';
 import { ExportService } from '../services/exportService';
 
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0];
+// Use the centralized API client instead of hardcoded URLs
+import apiClient from '../services/apiClient';
 
 interface Product {
   id: number;
@@ -58,7 +44,10 @@ interface SaleItem {
   productName: string;
   quantity: number;
   unitPrice: number;
-  totalPrice: number;
+  totalPrice?: number; // Legacy support
+  subtotal?: number; // Backend field
+  productPurchasePrice?: number; // Backend field
+  discount?: number; // Backend field
 }
 
 interface ReportsScreenProps {
@@ -120,13 +109,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     try {
       setLoading(true);
       
-      // Load sales
-      const salesResponse = await axios.get(`${API_BASE_URL}/sales`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
+      // Load sales using the centralized API client
+      const salesResponse = await apiClient.get('/sales');
       let salesData = [];
       if (salesResponse.data && salesResponse.data.content) {
         salesData = salesResponse.data.content;
@@ -134,13 +118,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
         salesData = salesResponse.data;
       }
 
-      // Load products
-      const productsResponse = await axios.get(`${API_BASE_URL}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
+      // Load products using the centralized API client
+      const productsResponse = await apiClient.get('/products?size=100');
       let productsData = [];
       if (productsResponse.data && productsResponse.data.content) {
         productsData = productsResponse.data.content;
@@ -148,44 +127,20 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
         productsData = productsResponse.data;
       }
 
+      console.log('📊 Données chargées:', {
+        sales: salesData.length,
+        products: productsData.length
+      });
+
       setSales(salesData);
       setProducts(productsData);
       calculateStats(salesData, productsData);
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
-      // Fallback avec des données simulées
-      const mockSales: Sale[] = [
-        {
-          id: 1,
-          saleDate: new Date().toISOString(),
-          totalAmount: 45.50,
-          paymentMethod: 'CASH' as const,
-          status: 'COMPLETED' as const,
-          items: [
-            { productId: 1, productName: 'Coca-Cola 33cl', quantity: 2, unitPrice: 1.50, totalPrice: 3.00 },
-            { productId: 2, productName: 'Pain de mie', quantity: 1, unitPrice: 2.50, totalPrice: 2.50 }
-          ]
-        },
-        {
-          id: 2,
-          saleDate: new Date(Date.now() - 86400000).toISOString(),
-          totalAmount: 32.00,
-          paymentMethod: 'CARD' as const,
-          status: 'COMPLETED' as const,
-          items: [
-            { productId: 1, productName: 'Coca-Cola 33cl', quantity: 3, unitPrice: 1.50, totalPrice: 4.50 }
-          ]
-        }
-      ];
-      
-      const mockProducts = [
-        { id: 1, name: 'Coca-Cola 33cl', sellingPrice: 1.50, stockQuantity: 50, category: 'Boissons', purchasePrice: 0.80 },
-        { id: 2, name: 'Pain de mie', sellingPrice: 2.50, stockQuantity: 20, category: 'Boulangerie', purchasePrice: 1.20 }
-      ];
-
-      setSales(mockSales);
-      setProducts(mockProducts);
-      calculateStats(mockSales, mockProducts);
+      // Initialize with empty data instead of mock data to show real state
+      setSales([]);
+      setProducts([]);
+      calculateStats([], []);
     } finally {
       setLoading(false);
     }
@@ -194,23 +149,32 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
   const calculateStats = (salesData: Sale[], productsData: Product[]) => {
     const filteredSales = filterSalesByPeriod(salesData, selectedPeriod);
     
+    console.log('📊 Calcul des statistiques:', {
+      totalSales: salesData.length,
+      filteredSales: filteredSales.length,
+      totalProducts: productsData.length,
+      period: selectedPeriod
+    });
+
     // Basic stats
     const totalSales = filteredSales.length;
-    const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.finalAmount || sale.totalAmount), 0);
     const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Top selling products
+    // Top selling products - support both saleItems and items
     const productSales: { [key: string]: { quantity: number; revenue: number } } = {};
     filteredSales.forEach(sale => {
-      if (sale.items) {
-        sale.items.forEach(item => {
-          if (!productSales[item.productName]) {
-            productSales[item.productName] = { quantity: 0, revenue: 0 };
-          }
-          productSales[item.productName].quantity += item.quantity;
-          productSales[item.productName].revenue += item.totalPrice;
-        });
-      }
+      const items = sale.saleItems || sale.items || [];
+      items.forEach(item => {
+        const productName = item.productName;
+        if (!productSales[productName]) {
+          productSales[productName] = { quantity: 0, revenue: 0 };
+        }
+        productSales[productName].quantity += item.quantity;
+        // Use subtotal if available, otherwise calculate from unitPrice * quantity
+        const itemRevenue = item.subtotal || (item.unitPrice * item.quantity) || item.totalPrice || 0;
+        productSales[productName].revenue += itemRevenue;
+      });
     });
 
     const topSellingProducts = Object.entries(productSales)
@@ -225,11 +189,12 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     // Sales by payment method
     const paymentMethods: { [key: string]: { count: number; amount: number } } = {};
     filteredSales.forEach(sale => {
-      if (!paymentMethods[sale.paymentMethod]) {
-        paymentMethods[sale.paymentMethod] = { count: 0, amount: 0 };
+      const method = sale.paymentMethod || 'UNKNOWN';
+      if (!paymentMethods[method]) {
+        paymentMethods[method] = { count: 0, amount: 0 };
       }
-      paymentMethods[sale.paymentMethod].count += 1;
-      paymentMethods[sale.paymentMethod].amount += sale.totalAmount;
+      paymentMethods[method].count += 1;
+      paymentMethods[method].amount += (sale.finalAmount || sale.totalAmount);
     });
 
     const salesByPaymentMethod = Object.entries(paymentMethods).map(([method, data]) => ({
@@ -241,21 +206,37 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     // Sales by period (daily for last 7 days)
     const salesByPeriod = generatePeriodData(filteredSales, selectedPeriod);
 
-    // Profit analysis
+    // Profit analysis - support both saleItems and items
     let totalCost = 0;
     filteredSales.forEach(sale => {
-      if (sale.items) {
-        sale.items.forEach(item => {
-          const product = productsData.find(p => p.id === item.productId);
-          if (product) {
-            totalCost += product.purchasePrice * item.quantity;
-          }
-        });
-      }
+      const items = sale.saleItems || sale.items || [];
+      items.forEach(item => {
+        // Try to use productPurchasePrice from the sale item first
+        let purchasePrice = item.productPurchasePrice;
+        
+        // If not available, find the product in the products list
+        if (!purchasePrice) {
+          const product = productsData.find(p => p.id === item.productId || p.name === item.productName);
+          purchasePrice = product?.purchasePrice || 0;
+        }
+        
+        totalCost += purchasePrice * item.quantity;
+      });
     });
 
     const grossProfit = totalRevenue - totalCost;
     const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+    console.log('📊 Statistiques calculées:', {
+      totalSales,
+      totalRevenue,
+      totalProducts: productsData.length,
+      averageOrderValue,
+      topSellingProducts: topSellingProducts.length,
+      totalCost,
+      grossProfit,
+      profitMargin
+    });
 
     setStats({
       totalSales,

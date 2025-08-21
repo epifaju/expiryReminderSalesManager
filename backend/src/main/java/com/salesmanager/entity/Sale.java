@@ -104,6 +104,15 @@ public class Sale {
             taxAmount = BigDecimal.ZERO;
         }
         
+        // First, ensure all sale items have their subtotals calculated
+        for (SaleItem item : saleItems) {
+            if (item.getUnitPrice() != null && item.getQuantity() != null) {
+                BigDecimal discountAmount = (item.getDiscount() != null) ? item.getDiscount() : BigDecimal.ZERO;
+                BigDecimal itemSubtotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())).subtract(discountAmount);
+                item.setSubtotal(itemSubtotal);
+            }
+        }
+        
         totalAmount = saleItems.stream()
             .map(SaleItem::getSubtotal)
             .filter(subtotal -> subtotal != null)

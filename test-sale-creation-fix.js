@@ -1,122 +1,150 @@
 const axios = require("axios");
 
-// Configuration
-const BASE_URL = "http://localhost:8080";
-const TEST_USER = {
-  username: "admin",
-  password: "admin123",
-};
-
-const TEST_SALE = {
-  customerName: "Client Test Fix",
-  customerPhone: "+33123456789",
-  customerEmail: "test@example.com",
-  paymentMethod: "CASH",
-  saleDate: new Date().toISOString(), // Format ISO avec timezone
-  discountAmount: 0,
-  taxAmount: 0,
-  notes: "Test de correction de l'erreur de création de vente",
-  saleItems: [
-    {
-      productId: 1,
-      quantity: 2,
-      unitPrice: 15.5,
-      discount: 0,
-    },
-    {
-      productId: 2,
-      quantity: 1,
-      unitPrice: 25.0,
-      discount: 0,
-    },
-  ],
-};
+const BASE_URL = "http://localhost:8083";
 
 async function testSaleCreation() {
   try {
-    console.log("🔄 Test de création de vente après correction...");
-    console.log("📅 Date envoyée:", TEST_SALE.saleDate);
+    console.log("🔐 Connexion en tant qu'admin...");
 
-    // 1. Connexion pour obtenir le token
-    console.log("\n1. Connexion...");
-    const loginResponse = await axios.post(
-      `${BASE_URL}/auth/signin`,
-      TEST_USER
-    );
-    const token = loginResponse.data.accessToken;
-    console.log("✅ Connexion réussie");
+    // Login as admin
+    const loginResponse = await axios.post(`${BASE_URL}/auth/signin`, {
+      username: "admin",
+      password: "admin123",
+    });
 
-    // 2. Vérification des produits disponibles
-    console.log("\n2. Vérification des produits...");
+    const token = loginResponse.data.token;
+    console.log("✅ Connexion réussie !");
+
+    // Get products to use in sale
+    console.log("\n📦 Récupération des produits...");
     const productsResponse = await axios.get(`${BASE_URL}/products`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const products = Array.isArray(productsResponse.data)
-      ? productsResponse.data
-      : productsResponse.data.content || [];
+    const products = productsResponse.data.content;
+    console.log(`✅ ${products.length} produits trouvés`);
 
-    console.log(`📦 ${products.length} produit(s) disponible(s)`);
-
-    if (products.length > 0) {
-      // Utiliser les vrais IDs des produits
-      TEST_SALE.saleItems = [
+    // Create a new sale with multiple items
+    console.log("\n💰 Création d'une nouvelle vente...");
+    const saleData = {
+      saleDate: new Date().toISOString(),
+      customerName: "Test Customer Fix",
+      customerPhone: "+33123456789",
+      customerEmail: "test@example.com",
+      paymentMethod: "CASH",
+      notes: "Test de correction du finalAmount",
+      saleItems: [
         {
           productId: products[0].id,
-          quantity: 1,
-          unitPrice: products[0].sellingPrice || products[0].price || 10.0,
+          quantity: 2,
+          unitPrice: products[0].sellingPrice,
           discount: 0,
         },
-      ];
-
-      if (products.length > 1) {
-        TEST_SALE.saleItems.push({
+        {
           productId: products[1].id,
           quantity: 1,
-          unitPrice: products[1].sellingPrice || products[1].price || 15.0,
-          discount: 0,
-        });
-      }
-    }
+          unitPrice: products[1].sellingPrice,
+          discount: 10.0,
+        },
+      ],
+    };
 
-    // 3. Création de la vente
-    console.log("\n3. Création de la vente...");
-    console.log("📋 Données envoyées:", JSON.stringify(TEST_SALE, null, 2));
+    console.log("Données de la vente:", JSON.stringify(saleData, null, 2));
 
-    const saleResponse = await axios.post(`${BASE_URL}/sales`, TEST_SALE, {
+    const saleResponse = await axios.post(`${BASE_URL}/sales`, saleData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
 
-    console.log("✅ Vente créée avec succès !");
-    console.log("📊 Réponse:", JSON.stringify(saleResponse.data, null, 2));
+    console.log("\n✅ Vente créée avec succès !");
+    console.log(
+      "Détails de la vente:",
+      JSON.stringify(saleResponse.data, null, 2)
+    );
 
-    return true;
-  } catch (error) {
-    console.error("❌ Erreur lors du test:", error.message);
+    // Verify the finalAmount is correctly calculated
+    const sale = saleResponse.data;
+    console.log("\n🔍 Vérification des calculs:");
+    console.log(`Total Amount: ${sale.totalAmount}€`);
+    console.log(`Final Amount: ${sale.finalAmount}€`);
+    console.log(`Discount Amount: ${sale.discountAmount}€`);
+    console.log(`Tax Amount: ${sale.taxAmount}€`);
 
-    if (error.response) {
-      console.error("📄 Status:", error.response.status);
-      console.error("📄 Data:", JSON.stringify(error.response.data, null, 2));
-      console.error("📄 Headers:", error.response.headers);
-    } else if (error.request) {
-      console.error("📡 Pas de réponse du serveur");
+    // Check each sale item
+    console.log("\n📋 Articles de la vente:");
+    sale.saleItems.forEach((item, index) => {
+      console.log(`Article ${index + 1}:`);
+      console.log(`  - Produit: ${item.productName}`);
+      console.log(`  - Quantité: ${item.quantity}`);
+      console.log(`  - Prix unitaire: ${item.unitPrice}€`);
+      console.log(`  - Remise: ${item.discount}€`);
+      console.log(`  - Sous-total: ${item.subtotal}€`);
+    });
+
+    // Calculate expected values
+    const expectedTotal = sale.saleItems.reduce(
+      (sum, item) => sum + item.subtotal,
+      0
+    );
+    const expectedFinal = expectedTotal - sale.discountAmount + sale.taxAmount;
+
+    console.log("\n🧮 Calculs attendus:");
+    console.log(`Total attendu: ${expectedTotal}€`);
+    console.log(`Final attendu: ${expectedFinal}€`);
+
+    if (sale.finalAmount === expectedFinal) {
+      console.log("\n✅ SUCCESS: Le finalAmount est correctement calculé !");
     } else {
-      console.error("⚙️ Erreur de configuration:", error.message);
+      console.log("\n❌ ERROR: Le finalAmount n'est pas correct !");
+      console.log(`Attendu: ${expectedFinal}€, Reçu: ${sale.finalAmount}€`);
     }
 
-    return false;
+    // Get all sales to check monthly revenue
+    console.log("\n📊 Vérification du revenu mensuel...");
+    const allSalesResponse = await axios.get(`${BASE_URL}/sales`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const allSales = allSalesResponse.data.content;
+    console.log(`Total des ventes: ${allSales.length}`);
+
+    // Calculate monthly revenue (current month)
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    const monthlySales = allSales.filter((sale) => {
+      const saleDate = new Date(sale.saleDate);
+      return (
+        saleDate.getMonth() === currentMonth &&
+        saleDate.getFullYear() === currentYear
+      );
+    });
+
+    const monthlyRevenue = monthlySales.reduce(
+      (sum, sale) => sum + (sale.finalAmount || sale.totalAmount || 0),
+      0
+    );
+
+    console.log(`Ventes du mois: ${monthlySales.length}`);
+    console.log(`Revenu mensuel calculé: ${monthlyRevenue}€`);
+
+    console.log("\n📋 Détails des ventes du mois:");
+    monthlySales.forEach((sale, index) => {
+      console.log(
+        `Vente ${index + 1}: ID=${sale.id}, Final=${sale.finalAmount}€, Total=${
+          sale.totalAmount
+        }€, Date=${sale.saleDate}`
+      );
+    });
+  } catch (error) {
+    console.error("❌ Erreur:", error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      console.error("🔒 Erreur d'authentification - vérifiez les identifiants");
+    }
   }
 }
 
-// Exécution du test
-testSaleCreation().then((success) => {
-  if (success) {
-    console.log("\n🎉 Test réussi ! La correction fonctionne.");
-  } else {
-    console.log("\n💥 Test échoué. Vérifiez les logs ci-dessus.");
-  }
-  process.exit(success ? 0 : 1);
-});
+testSaleCreation();

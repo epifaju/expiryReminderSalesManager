@@ -5,9 +5,10 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/salesmanager
-    driverClassName: org.postgresql.Driver
     username: ${DB_USERNAME:salesmanager}
     password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
@@ -17,6 +18,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
   messages:
     basename: i18n/messages
     encoding: UTF-8
@@ -40,6 +45,8 @@ logging:
   level:
     com.salesmanager: DEBUG
     org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -70,3 +77,13 @@ business:
     expiry-warning-days: 7
   reports:
     timezone: UTC
+
+# PostgreSQL specific configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

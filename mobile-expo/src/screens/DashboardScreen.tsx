@@ -20,6 +20,17 @@ interface Product {
   category: string;
 }
 
+interface SaleItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice?: number;
+  subtotal?: number;
+  productPurchasePrice?: number;
+  discount?: number;
+}
+
 interface Sale {
   id: number;
   saleDate: string;
@@ -28,6 +39,8 @@ interface Sale {
   customerName?: string;
   paymentMethod?: string;
   status?: string;
+  saleItems?: SaleItem[];
+  items?: SaleItem[]; // Legacy support
 }
 
 interface DashboardStats {
@@ -50,9 +63,10 @@ interface ActivityItem {
 interface DashboardScreenProps {
   token: string;
   onNavigate: (tab: 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings') => void;
+  isActive?: boolean; // Nouveau prop pour savoir si l'écran est actif
 }
 
-const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) => {
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, isActive = true }) => {
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,
     totalProducts: 0,
@@ -100,13 +114,34 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
         productService.getExpiredProducts()
       ]);
 
-      // Calculer les ventes d'aujourd'hui
+      // Calculer les ventes d'aujourd'hui - nombre de produits vendus, pas nombre de transactions
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const todaySales = sales.filter(sale => {
         const saleDate = new Date(sale.saleDate);
         saleDate.setHours(0, 0, 0, 0);
         return saleDate.getTime() === today.getTime();
+      });
+
+      // Calculer le nombre total de produits vendus aujourd'hui
+      const todayProductsSold = todaySales.reduce((total, sale) => {
+        const items = sale.saleItems || sale.items || [];
+        const saleQuantity = items.reduce((saleTotal, item) => {
+          return saleTotal + (item.quantity || 0);
+        }, 0);
+        return total + saleQuantity;
+      }, 0);
+
+      console.log('📊 Dashboard - Calculs des ventes aujourd\'hui:', {
+        totalSalesTransactions: todaySales.length,
+        totalProductsSold: todayProductsSold,
+        expiringProductsCount: expiringProducts.length,
+        expiredProductsCount: expiredProducts.length,
+        todaySalesDetails: todaySales.map(sale => ({
+          id: sale.id,
+          items: sale.saleItems || sale.items || [],
+          itemCount: (sale.saleItems || sale.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0)
+        }))
       });
 
       // Calculer les statistiques basées sur les données réelles
@@ -117,24 +152,41 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
       
-      const monthlyRevenue = sales
-        .filter(sale => {
-          if (!sale.saleDate) return false;
-          const saleDate = new Date(sale.saleDate);
-          // Vérifier que la date est valide
-          if (isNaN(saleDate.getTime())) return false;
-          return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
-        })
-        .reduce((sum, sale) => {
-          // Prioriser finalAmount, puis totalAmount, en s'assurant que c'est un nombre valide
-          let amount = 0;
-          if (typeof sale.finalAmount === 'number' && !isNaN(sale.finalAmount)) {
-            amount = sale.finalAmount;
-          } else if (typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount)) {
-            amount = sale.totalAmount;
-          }
-          return sum + amount;
-        }, 0);
+      // Filtrer les ventes du mois courant
+      const monthlySales = sales.filter(sale => {
+        if (!sale.saleDate) return false;
+        const saleDate = new Date(sale.saleDate);
+        // Vérifier que la date est valide
+        if (isNaN(saleDate.getTime())) return false;
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      });
+
+      // Calculer le revenu total du mois
+      const monthlyRevenue = monthlySales.reduce((sum, sale) => {
+        // Prioriser finalAmount, puis totalAmount, en s'assurant que c'est un nombre valide
+        let amount = 0;
+        if (typeof sale.finalAmount === 'number' && !isNaN(sale.finalAmount)) {
+          amount = sale.finalAmount;
+        } else if (typeof sale.totalAmount === 'number' && !isNaN(sale.totalAmount)) {
+          amount = sale.totalAmount;
+        }
+        return sum + amount;
+      }, 0);
+
+      console.log('💰 Dashboard - Calcul des revenus du mois:', {
+        currentMonth: currentMonth + 1, // +1 car getMonth() retourne 0-11
+        currentYear,
+        totalSales: sales.length,
+        monthlySalesCount: monthlySales.length,
+        monthlyRevenue,
+        monthlySalesDetails: monthlySales.map(sale => ({
+          id: sale.id,
+          date: sale.saleDate,
+          finalAmount: sale.finalAmount,
+          totalAmount: sale.totalAmount,
+          usedAmount: sale.finalAmount || sale.totalAmount || 0
+        }))
+      });
 
       // Générer l'activité récente basée sur les données réelles
       const activity: ActivityItem[] = [];
@@ -193,7 +245,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
       setRecentActivity(sortedActivity);
       
       setStats({
-        todaySales: todaySales.length,
+        todaySales: todayProductsSold, // Nombre de produits vendus aujourd'hui, pas nombre de transactions
         totalProducts: products.length,
         monthlyRevenue: Math.round(monthlyRevenue),
         lowStock: lowStockProducts.length,
@@ -224,6 +276,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate }) 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Effet pour recharger les données quand l'écran devient actif
+  useEffect(() => {
+    if (isActive) {
+      console.log('🔄 Dashboard devient actif - rechargement des données...');
+      loadDashboardData();
+    }
+  }, [isActive]);
 
   // Fonctions pour les actions rapides
   const handleNewSale = () => {

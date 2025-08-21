@@ -117,7 +117,7 @@ export default function App() {
   const renderScreen = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardScreen token={token} onNavigate={setActiveTab} />;
+        return <DashboardScreen token={token} onNavigate={setActiveTab} isActive={true} />;
       case 'products':
         return <ProductsScreen token={token} />;
       case 'sales':
@@ -129,7 +129,7 @@ export default function App() {
       case 'settings':
         return <SettingsScreen onLogout={logout} />;
       default:
-        return <DashboardScreen token={token} onNavigate={setActiveTab} />;
+        return <DashboardScreen token={token} onNavigate={setActiveTab} isActive={true} />;
     }
   };
 

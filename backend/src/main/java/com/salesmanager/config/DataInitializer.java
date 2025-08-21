@@ -172,11 +172,12 @@ public class DataInitializer implements CommandLineRunner {
         if (saleRepository.count() == 0) {
             List<Sale> sales = new ArrayList<>();
             
-            // Vente 1 - Il y a 7 jours
+            // Vente 1 - Il y a 7 jours (mais dans le mois courant)
             Sale sale1 = new Sale();
             sale1.setCustomerName("Jean Dupont");
             sale1.setCustomerEmail("jean.dupont@email.com");
             sale1.setTotalAmount(new BigDecimal("849.98"));
+            sale1.setFinalAmount(new BigDecimal("849.98")); // Ajouter finalAmount
             sale1.setSaleDate(LocalDateTime.now().minusDays(7));
             sale1.setCreatedAt(LocalDateTime.now().minusDays(7));
             sale1 = saleRepository.save(sale1);
@@ -203,6 +204,7 @@ public class DataInitializer implements CommandLineRunner {
             sale2.setCustomerName("Marie Martin");
             sale2.setCustomerEmail("marie.martin@email.com");
             sale2.setTotalAmount(new BigDecimal("899.99"));
+            sale2.setFinalAmount(new BigDecimal("899.99")); // Ajouter finalAmount
             sale2.setSaleDate(LocalDateTime.now().minusDays(3));
             sale2.setCreatedAt(LocalDateTime.now().minusDays(3));
             sale2 = saleRepository.save(sale2);
@@ -220,6 +222,7 @@ public class DataInitializer implements CommandLineRunner {
             sale3.setCustomerName("Pierre Durand");
             sale3.setCustomerEmail("pierre.durand@email.com");
             sale3.setTotalAmount(new BigDecimal("749.98"));
+            sale3.setFinalAmount(new BigDecimal("749.98")); // Ajouter finalAmount
             sale3.setSaleDate(LocalDateTime.now());
             sale3.setCreatedAt(LocalDateTime.now());
             sale3 = saleRepository.save(sale3);
