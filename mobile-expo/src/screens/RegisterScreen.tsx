@@ -7,26 +7,8 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  Platform,
 } from 'react-native';
-import axios from 'axios';
-
-// Dynamic API URL based on platform with fallback options
-const getApiUrls = () => {
-  if (Platform.OS === 'web') {
-    return ['http://localhost:8081'];
-  } else {
-    // For Android emulator, try multiple options in order of preference
-    return [
-      'http://192.168.1.27:8081',  // Your actual IP address (most reliable)
-      'http://10.0.2.2:8081',      // Standard Android emulator localhost
-      'http://localhost:8081'      // Sometimes works on some emulators
-    ];
-  }
-};
-
-const API_URLS = getApiUrls();
-const API_BASE_URL = API_URLS[0];
+import authService from '../services/authService';
 
 interface RegisterScreenProps {
   onBackToLogin: () => void;
@@ -82,82 +64,62 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
     return true;
   };
 
-  const tryRegister = async (baseUrl: string) => {
-    console.log('Tentative d\'inscription à:', `${baseUrl}/auth/signup`);
-    
-    const response = await axios.post(`${baseUrl}/auth/signup`, {
-      username: formData.username.trim(),
-      email: formData.email.trim().toLowerCase(),
-      password: formData.password,
-      roles: ['ROLE_USER'] // Default role for new users
-    }, {
-      timeout: 10000, // 10 seconds timeout
-    });
-
-    return response;
-  };
-
   const handleRegister = async () => {
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
-    console.log('Platform:', Platform.OS);
-    console.log('URLs disponibles:', API_URLS);
     
-    let lastError = null;
-    
-    // Try each URL in sequence
-    for (let i = 0; i < API_URLS.length; i++) {
-      const currentUrl = API_URLS[i];
-      try {
-        console.log(`Essai ${i + 1}/${API_URLS.length} avec URL:`, currentUrl);
-        
-        const response = await tryRegister(currentUrl);
-        
-        console.log('Réponse reçue:', response.data);
+    try {
+      console.log('Tentative d\'inscription avec les données:', {
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: '***'
+      });
 
-        if (response.status === 200) {
-          Alert.alert(
-            'Succès', 
-            'Inscription réussie ! Vous pouvez maintenant vous connecter.',
-            [
-              {
-                text: 'OK',
-                onPress: onRegisterSuccess
-              }
-            ]
-          );
-          setLoading(false);
-          return; // Success, exit the function
-        }
-      } catch (error: any) {
-        console.error(`Erreur avec URL ${currentUrl}:`, error.message);
-        lastError = error;
-        
-        // Handle specific error cases
-        if (error.response?.status === 409) {
-          // Conflict - user already exists
-          const errorMessage = error.response?.data?.message || 'Un utilisateur avec ce nom ou cet email existe déjà';
-          Alert.alert('Erreur', errorMessage);
-          setLoading(false);
-          return;
-        }
-        
-        // If this is not the last URL, continue to the next one
-        if (i < API_URLS.length - 1) {
-          console.log('Tentative avec la prochaine URL...');
-          continue;
+      const registerData = {
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        roles: ['ROLE_USER'] // Default role for new users
+      };
+
+      const response = await authService.register(registerData);
+      
+      console.log('Inscription réussie:', response);
+      
+      Alert.alert(
+        'Succès', 
+        'Inscription réussie ! Vous pouvez maintenant vous connecter avec vos identifiants.',
+        [
+          {
+            text: 'OK',
+            onPress: onRegisterSuccess
+          }
+        ]
+      );
+    } catch (error: any) {
+      console.error('Erreur lors de l\'inscription:', error);
+      
+      let errorMessage = 'Une erreur est survenue lors de l\'inscription';
+      
+      if (error.message) {
+        if (error.message.includes('Username already exists')) {
+          errorMessage = 'Ce nom d\'utilisateur existe déjà. Veuillez en choisir un autre.';
+        } else if (error.message.includes('Email already in use')) {
+          errorMessage = 'Cette adresse email est déjà utilisée. Veuillez en utiliser une autre.';
+        } else if (error.message.includes('Impossible de se connecter')) {
+          errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
+        } else {
+          errorMessage = error.message;
         }
       }
+      
+      Alert.alert('Erreur d\'inscription', errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    // If we get here, all URLs failed
-    console.error('Toutes les URLs ont échoué. Dernière erreur:', lastError);
-    const errorMessage = lastError?.response?.data?.message || lastError?.message || 'Impossible de se connecter au serveur';
-    Alert.alert('Erreur', `${errorMessage}\n\nURLs essayées:\n${API_URLS.join('\n')}\n\nPlatform: ${Platform.OS}`);
-    setLoading(false);
   };
 
   const updateFormData = (field: string, value: string) => {

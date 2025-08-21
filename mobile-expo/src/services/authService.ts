@@ -149,7 +149,7 @@ class AuthService {
   }
 
   // Register method
-  async register(registerData: RegisterData): Promise<AuthResponse> {
+  async register(registerData: RegisterData): Promise<any> {
     let lastError = null;
     
     // Try each URL in sequence
@@ -157,27 +157,55 @@ class AuthService {
       const currentUrl = API_URLS[i];
       try {
         console.log(`Tentative d'inscription ${i + 1}/${API_URLS.length} avec URL:`, currentUrl);
+        console.log('Données d\'inscription:', { ...registerData, password: '***' });
         
         const response = await axios.post(`${currentUrl}/auth/signup`, registerData, {
-          timeout: 5000,
+          timeout: 15000, // Increased timeout
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: function (status) {
+            return status < 500; // Accept any status code less than 500
+          }
         });
 
-        if (response.data) {
+        console.log('Réponse d\'inscription:', response.status, response.data);
+
+        if (response.status === 200 && response.data) {
           console.log('Inscription réussie:', response.data);
+          
+          // Update API client with the working URL for future requests
+          updateApiClientBaseUrl(currentUrl);
+          
           return response.data;
+        } else if (response.status === 409) {
+          // Conflict - user already exists
+          const errorMessage = response.data?.message || 'Un utilisateur avec ce nom ou cet email existe déjà';
+          throw new Error(errorMessage);
+        } else if (response.status >= 400) {
+          throw new Error(`Erreur du serveur: ${response.status} - ${response.data?.message || response.statusText}`);
         }
       } catch (error: any) {
         console.error(`Erreur d'inscription avec URL ${currentUrl}:`, error.message);
         lastError = error;
         
+        // Handle specific error cases
+        if (error.response?.status === 409) {
+          throw new Error(error.response?.data?.message || 'Un utilisateur avec ce nom ou cet email existe déjà');
+        }
+        
         if (i < API_URLS.length - 1) {
+          console.log('Tentative avec la prochaine URL...');
           continue;
         }
       }
     }
     
+    // If we get here, all URLs failed
+    console.error('Toutes les URLs ont échoué. Dernière erreur:', lastError);
     const errorMessage = lastError?.response?.data?.message || lastError?.message || 'Impossible de créer le compte';
-    throw new Error(errorMessage);
+    throw new Error(`${errorMessage}\n\nURLs essayées:\n${API_URLS.join('\n')}`);
   }
 
   // Store authentication data (simplified version without persistent storage)
