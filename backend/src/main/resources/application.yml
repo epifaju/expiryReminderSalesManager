@@ -1,21 +1,25 @@
 server:
-  port: 8080
+  port: 8082
   address: 0.0.0.0
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/salesmanager
-    driverClassName: org.postgresql.Driver
-    username: ${DB_USERNAME:salesmanager}
-    password: ${DB_PASSWORD:password}
+    url: jdbc:h2:mem:testdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
   messages:
     basename: i18n/messages
@@ -49,9 +53,11 @@ cors:
   allowed-origins:
     - http://localhost:3000
     - http://localhost:8081
-    - http://localhost:8083
+    - http://localhost:8082
     - http://10.0.2.2:8081
+    - http://10.0.2.2:8082
     - http://192.168.1.27:8081
+    - http://192.168.1.27:8082
     - http://127.0.0.1:3000
   allowed-methods:
     - GET

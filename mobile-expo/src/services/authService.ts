@@ -5,16 +5,16 @@ import { initializeApiClient, updateApiClientBaseUrl, setTokenProvider } from '.
 // Dynamic API URL based on platform with fallback options
 const getApiUrls = () => {
   if (Platform.OS === 'web') {
-    return ['http://localhost:8083'];
+    return ['http://localhost:8082'];
   } else {
-    // For Android emulator, try multiple options in order of preference
-    // Backend Spring Boot runs on port 8083
-    return [
-      'http://192.168.1.27:8083',  // Your actual IP address
-      'http://10.0.2.2:8083',      // Standard Android emulator localhost
-      'http://localhost:8083',     // Sometimes works on some emulators
-      'http://127.0.0.1:8083'      // Local loopback
-    ];
+      // For Android emulator, try multiple options in order of preference
+      // Backend Spring Boot runs on port 8082
+      return [
+        'http://192.168.1.27:8082',  // Your actual IP address
+        'http://10.0.2.2:8082',      // Standard Android emulator localhost
+        'http://localhost:8082',     // Sometimes works on some emulators
+        'http://127.0.0.1:8082'      // Local loopback
+      ];
   }
 };
 

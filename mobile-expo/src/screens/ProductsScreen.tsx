@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import productService from '../services/productService';
 import DatePicker from '../components/DatePicker';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 interface Product {
   id: number;
@@ -38,6 +39,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
     description: '',
@@ -118,6 +120,37 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
     }
   };
 
+  const handleBarcodeScan = (scannedBarcode: string) => {
+    setNewProduct({ ...newProduct, barcode: scannedBarcode });
+    setShowScanner(false);
+    
+    // Recherche automatique d'un produit existant avec ce code-barres
+    const existingProduct = products.find(p => p.barcode === scannedBarcode);
+    if (existingProduct) {
+      Alert.alert(
+        'Produit trouvé',
+        `Produit existant trouvé: ${existingProduct.name}`,
+        [
+          { text: 'Utiliser comme base', onPress: () => {
+            setNewProduct({
+              ...newProduct,
+              name: existingProduct.name,
+              description: existingProduct.description,
+              barcode: scannedBarcode,
+              purchasePrice: existingProduct.purchasePrice.toString(),
+              sellingPrice: existingProduct.sellingPrice.toString(),
+              category: existingProduct.category,
+              unit: existingProduct.unit,
+            });
+          }},
+          { text: 'Nouveau produit', onPress: () => {
+            setNewProduct({ ...newProduct, barcode: scannedBarcode });
+          }}
+        ]
+      );
+    }
+  };
+
   useEffect(() => {
     loadProducts();
   }, []);
@@ -173,12 +206,24 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
             multiline
           />
           
+        <View style={styles.barcodeContainer}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.barcodeInput]}
             placeholder="Code-barres"
             value={newProduct.barcode}
             onChangeText={(text) => setNewProduct({...newProduct, barcode: text})}
           />
+          <TouchableOpacity
+            style={styles.scanButton}
+            onPress={() => {
+              console.log('🔍 Bouton scanner cliqué !');
+              setShowScanner(true);
+              console.log('🔍 showScanner mis à true:', true);
+            }}
+          >
+            <Text style={styles.scanButtonText}>🔍</Text>
+          </TouchableOpacity>
+        </View>
           
           <TextInput
             style={styles.input}
@@ -248,6 +293,14 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
             <Text style={styles.addButtonText}>Ajouter le Produit</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Scanner de code-barres */}
+        <BarcodeScanner
+          isVisible={showScanner}
+          onScan={handleBarcodeScan}
+          onClose={() => setShowScanner(false)}
+          title="Scanner le code-barres"
+        />
       </View>
     );
   }
@@ -296,6 +349,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           </View>
         )}
       </ScrollView>
+
     </View>
   );
 };
@@ -459,6 +513,26 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 20,
     marginBottom: 10,
+  },
+  barcodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  barcodeInput: {
+    flex: 1,
+  },
+  scanButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanButtonText: {
+    fontSize: 20,
+    color: '#fff',
   },
 });
 

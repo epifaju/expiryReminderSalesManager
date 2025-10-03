@@ -11,6 +11,7 @@ import {
 import saleService, { SaleRequest, PaymentMethod } from '../services/saleService';
 import apiClient from '../services/apiClient';
 import NewSaleForm from '../components/NewSaleForm';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 interface Product {
   id: number;
@@ -19,6 +20,7 @@ interface Product {
   stockQuantity: number;
   category: string;
   unit: string;
+  barcode: string;
 }
 
 interface SaleItem {
@@ -60,6 +62,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
+  const [showScanner, setShowScanner] = useState(false);
 
   const loadSales = async () => {
     try {
@@ -260,6 +263,18 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         </View>
       </View>
 
+      {/* Scanner Button for New Sale */}
+      {activeTab === 'new' && (
+        <View style={styles.scannerButtonContainer}>
+          <TouchableOpacity
+            style={styles.scannerButton}
+            onPress={() => setShowScanner(true)}
+          >
+            <Text style={styles.scannerButtonText}>🔍 Scanner un Produit</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Content */}
       {activeTab === 'list' ? (
         <ScrollView
@@ -288,6 +303,29 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       ) : (
         <NewSaleForm products={products} onCreateSale={handleCreateSale} />
       )}
+
+      {/* Scanner de code-barres pour les ventes */}
+      <BarcodeScanner
+        isVisible={showScanner}
+        onScan={(scannedBarcode) => {
+          setShowScanner(false);
+          const foundProduct = products.find(p => p.barcode === scannedBarcode);
+          if (foundProduct) {
+            Alert.alert(
+              'Produit trouvé',
+              `${foundProduct.name} - ${foundProduct.sellingPrice}€`,
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert(
+              'Produit non trouvé',
+              `Aucun produit avec le code-barres: ${scannedBarcode}`
+            );
+          }
+        }}
+        onClose={() => setShowScanner(false)}
+        title="Scanner un produit pour la vente"
+      />
     </View>
   );
 };
@@ -430,6 +468,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  scannerButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#dee2e6',
+  },
+  scannerButton: {
+    backgroundColor: '#3498db',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  scannerButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
