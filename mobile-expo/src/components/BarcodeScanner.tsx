@@ -182,9 +182,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <Text style={styles.instructionSubtext}>
               Le scan se fera automatiquement
             </Text>
-            <Text style={styles.debugText}>
-              Debug: Permission={hasPermission?.toString()}, Scanning={!scanned}, Scanned={scanned.toString()}
-            </Text>
           </View>
         </View>
 
@@ -266,12 +263,6 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     textAlign: 'center',
-  },
-  debugText: {
-    color: '#ffff00',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 10,
   },
   bottomControls: {
     backgroundColor: '#fff',
