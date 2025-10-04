@@ -22,7 +22,12 @@ export interface Receipt {
   updatedAt: string;
   downloadedAt?: string;
   downloadCount: number;
-  sale: {
+  saleId: number;
+  saleNumber: string;
+  saleDate: string;
+  qrCodeData?: string;
+  // Propriétés optionnelles pour la compatibilité avec l'ancienne structure
+  sale?: {
     id: number;
     saleNumber: string;
     saleDate: string;
@@ -39,12 +44,17 @@ export interface Receipt {
       };
     }>;
   };
-  user: {
+  user?: {
     id: number;
     firstName: string;
     lastName: string;
     email: string;
   };
+  // Propriétés utilisateur directes (pour la nouvelle structure)
+  userId?: number;
+  userFirstName?: string;
+  userLastName?: string;
+  userEmail?: string;
 }
 
 export interface CreateReceiptRequest {
@@ -68,9 +78,14 @@ class ReceiptService {
    */
   async createReceipt(saleId: number): Promise<Receipt> {
     try {
+      console.log('🧾 Création d\'un reçu pour la vente:', saleId);
+      
       const response = await apiClient.post(`${this.baseUrl}/create/${saleId}`);
+      console.log('✅ Reçu créé avec succès:', response.data);
+      
       return response.data.receipt;
     } catch (error: any) {
+      console.error('❌ Erreur lors de la création du reçu:', error);
       throw new Error(error.response?.data?.error || 'Erreur lors de la création du reçu');
     }
   }

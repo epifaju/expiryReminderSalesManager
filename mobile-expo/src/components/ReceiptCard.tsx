@@ -136,11 +136,15 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
         <View style={styles.detailsSection}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Vente:</Text>
-            <Text style={styles.detailValue}>{receipt.sale.saleNumber}</Text>
+            <Text style={styles.detailValue}>
+              {receipt.saleNumber || 'N/A'}
+            </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Articles:</Text>
-            <Text style={styles.detailValue}>{receipt.sale.saleItems.length}</Text>
+            <Text style={styles.detailLabel}>Date de vente:</Text>
+            <Text style={styles.detailValue}>
+              {receipt.saleDate ? new Date(receipt.saleDate).toLocaleDateString('fr-FR') : 'N/A'}
+            </Text>
           </View>
           {receipt.downloadCount > 0 && (
             <View style={styles.detailRow}>

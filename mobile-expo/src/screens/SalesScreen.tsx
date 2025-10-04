@@ -242,12 +242,16 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                     text: 'Générer', 
                     onPress: async () => {
                       try {
+                        console.log('🔄 Début de la création du reçu pour la vente:', sale.id);
+                        
                         // Appeler le service de création de reçu
-                        const response = await receiptService.createReceipt(sale.id);
+                        const receipt = await receiptService.createReceipt(sale.id);
+                        
+                        console.log('✅ Reçu créé avec succès:', receipt);
                         
                         Alert.alert(
                           '✅ Reçu créé avec succès',
-                          `Le reçu ${response.receiptNumber} a été généré pour la vente ${sale.id}.`,
+                          `Le reçu ${receipt.receiptNumber} a été généré pour la vente ${sale.id}.\n\nMontant: ${receipt.finalAmount}€\nDate: ${new Date(receipt.createdAt).toLocaleDateString('fr-FR')}`,
                           [
                             {
                               text: 'Voir les reçus',
@@ -260,10 +264,21 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                           ]
                         );
                       } catch (error: any) {
-                        console.error('Erreur création reçu:', error);
+                        console.error('❌ Erreur création reçu:', error);
+                        
+                        // Message d'erreur plus détaillé
+                        let errorMessage = 'Impossible de créer le reçu';
+                        if (error.message) {
+                          errorMessage = error.message;
+                        } else if (error.response?.data?.error) {
+                          errorMessage = error.response.data.error;
+                        } else if (error.response?.status) {
+                          errorMessage = `Erreur serveur (${error.response.status})`;
+                        }
+                        
                         Alert.alert(
                           '❌ Erreur de création',
-                          error.message || 'Impossible de créer le reçu',
+                          `${errorMessage}\n\nVente ID: ${sale.id}\nVérifiez que la vente existe et que vous avez les permissions nécessaires.`,
                           [{ text: 'OK' }]
                         );
                       }

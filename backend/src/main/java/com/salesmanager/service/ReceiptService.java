@@ -73,10 +73,12 @@ public class ReceiptService {
         receipt.setCompanyPhone("01 23 45 67 89"); // À personnaliser
         receipt.setCompanyEmail("contact@monentreprise.fr"); // À personnaliser
 
-        // Générer le QR code (optionnel)
-        receipt.setQrCodeData(generateQrCodeData(receipt));
-
+        // Sauvegarder le reçu d'abord pour générer le numéro de reçu
         Receipt savedReceipt = receiptRepository.save(receipt);
+        
+        // Générer le QR code après la sauvegarde (quand le receiptNumber est disponible)
+        savedReceipt.setQrCodeData(generateQrCodeData(savedReceipt));
+        savedReceipt = receiptRepository.save(savedReceipt);
 
         logger.info("Reçu créé avec succès. ID: {}, Numéro: {}", savedReceipt.getId(), savedReceipt.getReceiptNumber());
 

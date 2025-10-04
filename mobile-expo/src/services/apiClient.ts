@@ -7,12 +7,16 @@ const getApiUrls = () => {
     return ['http://localhost:8082'];
   } else {
     // For Android emulator, try multiple options in order of preference
-    // Backend Spring Boot runs on port 8082
+    // Backend Spring Boot runs on port 8082 (confirmed working)
     return [
-      'http://192.168.1.27:8082',  // Your actual IP address
+      'http://192.168.1.16:8082',  // Your actual IP address - CONFIRMED WORKING
       'http://10.0.2.2:8082',      // Standard Android emulator localhost
       'http://localhost:8082',     // Sometimes works on some emulators
-      'http://127.0.0.1:8082'      // Local loopback
+      'http://127.0.0.1:8082',     // Local loopback
+      'http://192.168.1.16:8083',  // Alternative port in case backend changes
+      'http://10.0.2.2:8083',      // Alternative port
+      'http://localhost:8083',     // Alternative port
+      'http://127.0.0.1:8083'      // Alternative port
     ];
   }
 };
@@ -33,8 +37,8 @@ const setTokenProvider = (callback: () => string | null) => {
 const testApiConnection = async (url: string): Promise<boolean> => {
   try {
     console.log(`🔍 Testing connection to: ${url}`);
-    // Use a simple GET request to a known endpoint instead of /auth/test
-    const response = await axios.get(`${url}/products?size=1`, { 
+    // Use a simple GET request to a known public endpoint
+    const response = await axios.get(`${url}/auth/signin`, { 
       timeout: 5000,
       headers: {
         'Content-Type': 'application/json',
@@ -43,7 +47,12 @@ const testApiConnection = async (url: string): Promise<boolean> => {
     });
     console.log(`✅ Connection successful to: ${url}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    // If we get a 405 (Method Not Allowed) or 400 (Bad Request), the endpoint exists
+    if (error.response && (error.response.status === 405 || error.response.status === 400)) {
+      console.log(`✅ Connection successful to: ${url} (endpoint exists)`);
+      return true;
+    }
     console.log(`❌ Connection failed to: ${url}`);
     return false;
   }

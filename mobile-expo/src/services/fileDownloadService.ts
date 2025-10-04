@@ -1,5 +1,6 @@
 import { Platform, Alert, PermissionsAndroid } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 // Import conditionnel des modules natifs
 let RNBlobUtil: any = null;
@@ -37,7 +38,11 @@ class FileDownloadService {
    * Vérifie si les modules natifs sont disponibles
    */
   private isNativeModuleAvailable(): boolean {
-    return RNBlobUtil !== null && share !== null;
+    const isAvailable = RNBlobUtil !== null && share !== null;
+    if (!isAvailable) {
+      console.log('Modules natifs non disponibles. RNBlobUtil:', !!RNBlobUtil, 'Share:', !!share);
+    }
+    return isAvailable;
   }
 
   /**
@@ -140,10 +145,8 @@ class FileDownloadService {
     try {
       // Vérifier si les modules natifs sont disponibles
       if (!this.isNativeModuleAvailable()) {
-        return {
-          success: false,
-          error: 'Modules natifs non disponibles (mode web ou problème de chargement)',
-        };
+        console.log('Modules natifs non disponibles, utilisation du fallback Expo...');
+        return await this.savePdfBlobWithExpo(blob, fileName, options);
       }
 
       const { showShareOptions = true, saveToDevice = true } = options;
@@ -180,10 +183,9 @@ class FileDownloadService {
       };
     } catch (error: any) {
       console.error('Erreur lors de la sauvegarde:', error);
-      return {
-        success: false,
-        error: error.message || 'Erreur lors de la sauvegarde',
-      };
+      // Essayer avec Expo en cas d'erreur
+      console.log('Erreur avec modules natifs, tentative avec Expo...');
+      return await this.savePdfBlobWithExpo(blob, fileName, options);
     }
   }
 
@@ -287,6 +289,50 @@ class FileDownloadService {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  /**
+   * Sauvegarde un blob PDF en utilisant Expo (fallback)
+   */
+  private async savePdfBlobWithExpo(
+    blob: Blob,
+    fileName: string,
+    options: DownloadOptions = {}
+  ): Promise<DownloadResult> {
+    try {
+      const { showShareOptions = true } = options;
+      
+      // Convertir le blob en base64
+      const base64 = await this.blobToBase64(blob);
+      
+      // Générer le nom de fichier unique
+      const timestamp = new Date().getTime();
+      const finalFileName = `${fileName}_${timestamp}.pdf`;
+      
+      // Créer le fichier avec Expo FileSystem
+      const fileUri = `${FileSystem.documentDirectory}${finalFileName}`;
+      await FileSystem.writeAsStringAsync(fileUri, base64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      if (showShareOptions && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Partager le reçu PDF',
+        });
+      }
+
+      return {
+        success: true,
+        filePath: fileUri,
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la sauvegarde avec Expo:', error);
+      return {
+        success: false,
+        error: error.message || 'Erreur lors de la sauvegarde avec Expo',
+      };
+    }
   }
 }
 
