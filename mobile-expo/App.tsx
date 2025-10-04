@@ -28,18 +28,24 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [showRegister, setShowRegister] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [appReady, setAppReady] = useState(false);
 
   // Initialize auth service on app start
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('🔧 Initialisation de l\'app...');
         const isAuthenticated = await authService.initialize();
         if (isAuthenticated) {
           setIsLoggedIn(true);
           setToken(authService.getToken() || '');
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('❌ Erreur initialisation:', error);
+      } finally {
+        // TOUJOURS marquer l'app comme prête, même en cas d'erreur
+        console.log('✅ App prête à utiliser');
+        setAppReady(true);
       }
     };
 
@@ -133,6 +139,19 @@ export default function App() {
     }
   };
 
+  // Affichage de chargement pendant l'initialisation
+  if (!appReady) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>🛍️ Sales Manager Mobile</Text>
+        <Text style={styles.subtitle}>Initialisation...</Text>
+        <View style={{ alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 16, color: '#666' }}>⏳ Chargement...</Text>
+        </View>
+      </View>
+    );
+  }
+
   if (!isLoggedIn) {
     if (showRegister) {
       return (
@@ -169,13 +188,18 @@ export default function App() {
           style={[styles.button, isLoading && styles.buttonDisabled]} 
           onPress={login}
           disabled={isLoading}
+          activeOpacity={0.7}
         >
           <Text style={styles.buttonText}>
             {isLoading ? 'Connexion...' : 'Se connecter'}
           </Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.linkButton} onPress={() => setShowRegister(true)}>
+        <TouchableOpacity 
+          style={styles.linkButton} 
+          onPress={() => setShowRegister(true)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.linkText}>Pas de compte ? S'inscrire</Text>
         </TouchableOpacity>
       </View>
@@ -196,6 +220,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'dashboard' && styles.activeNavItem]}
           onPress={() => setActiveTab('dashboard')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'dashboard' && styles.activeNavIcon]}>🏠</Text>
           <Text style={[styles.navText, activeTab === 'dashboard' && styles.activeNavText]}>Accueil</Text>
@@ -204,6 +229,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'products' && styles.activeNavItem]}
           onPress={() => setActiveTab('products')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'products' && styles.activeNavIcon]}>📦</Text>
           <Text style={[styles.navText, activeTab === 'products' && styles.activeNavText]}>Produits</Text>
@@ -212,6 +238,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'sales' && styles.activeNavItem]}
           onPress={() => setActiveTab('sales')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'sales' && styles.activeNavIcon]}>🛒</Text>
           <Text style={[styles.navText, activeTab === 'sales' && styles.activeNavText]}>Ventes</Text>
@@ -220,6 +247,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'reports' && styles.activeNavItem]}
           onPress={() => setActiveTab('reports')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'reports' && styles.activeNavIcon]}>📊</Text>
           <Text style={[styles.navText, activeTab === 'reports' && styles.activeNavText]}>Rapports</Text>
@@ -228,6 +256,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'expiring' && styles.activeNavItem]}
           onPress={() => setActiveTab('expiring')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'expiring' && styles.activeNavIcon]}>⚠️</Text>
           <Text style={[styles.navText, activeTab === 'expiring' && styles.activeNavText]}>Expiration</Text>
@@ -236,6 +265,7 @@ export default function App() {
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'settings' && styles.activeNavItem]}
           onPress={() => setActiveTab('settings')}
+          activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'settings' && styles.activeNavIcon]}>⚙️</Text>
           <Text style={[styles.navText, activeTab === 'settings' && styles.activeNavText]}>Paramètres</Text>

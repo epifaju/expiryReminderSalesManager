@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Alert, TouchableOpacity, Modal, Dimensions, Platform } from 'react-native';
-import { Camera, CameraType, PermissionStatus } from 'expo-camera';
-import { BarCodeScanner as ExpoBarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, PermissionStatus, useCameraPermissions } from 'expo-camera';
 
 interface BarcodeScannerProps {
   isVisible: boolean;
@@ -17,8 +16,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   title = "Scanner le code-barres"
 }) => {
   const [scanned, setScanned] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const cameraRef = useRef<Camera>(null);
+  const [permission, requestPermission] = useCameraPermissions();
 
   useEffect(() => {
     if (isVisible) {
@@ -31,15 +29,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   useEffect(() => {
     const getCameraPermission = async () => {
       console.log('📱 Demande de permission pour la caméra...');
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      console.log('📱 Statut de permission:', status);
-      setHasPermission(status === PermissionStatus.GRANTED);
+      if (!permission?.granted) {
+        await requestPermission();
+      }
     };
 
-    if (isVisible) {
+    if (isVisible && !permission?.granted) {
       getCameraPermission();
     }
-  }, [isVisible]);
+  }, [isVisible, permission, requestPermission]);
 
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     if (scanned) return;
@@ -63,7 +61,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     onClose();
   };
 
-  console.log('🎥 BarcodeScanner render - isVisible:', isVisible, 'hasPermission:', hasPermission);
+  console.log('🎥 BarcodeScanner render - isVisible:', isVisible, 'permission:', permission);
   
   if (!isVisible) {
     console.log('🎥 BarcodeScanner: Composant masqué (isVisible=false)');
@@ -100,8 +98,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   }
 
   // Permission refusée
-  if (hasPermission === false) {
-    console.log('🎥 BarcodeScanner: Permission refusée (hasPermission=false)');
+  if (permission && !permission.granted) {
+    console.log('🎥 BarcodeScanner: Permission refusée');
     return (
       <Modal visible={isVisible} animationType="slide">
         <View style={styles.container}>
@@ -128,8 +126,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   }
 
   // Demande de permission en cours
-  if (hasPermission === null) {
-    console.log('🎥 BarcodeScanner: Demande de permission en cours (hasPermission=null)');
+  if (!permission) {
+    console.log('🎥 BarcodeScanner: Demande de permission en cours');
     return (
       <Modal visible={isVisible} animationType="slide">
         <View style={styles.container}>
@@ -160,22 +158,21 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         </View>
 
         <View style={styles.scannerContainer}>
-          <Camera
-            ref={cameraRef}
+          <CameraView
             style={styles.scanner}
-            type={CameraType.back}
-            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-            barCodeScannerSettings={{
-              barCodeTypes: [
-                ExpoBarCodeScanner.Constants.BarCodeType.qr,
-                ExpoBarCodeScanner.Constants.BarCodeType.code128,
-                ExpoBarCodeScanner.Constants.BarCodeType.ean13,
-                ExpoBarCodeScanner.Constants.BarCodeType.ean8,
-                ExpoBarCodeScanner.Constants.BarCodeType.code39,
-                ExpoBarCodeScanner.Constants.BarCodeType.code93,
-                ExpoBarCodeScanner.Constants.BarCodeType.codabar,
-                ExpoBarCodeScanner.Constants.BarCodeType.pdf417,
-                ExpoBarCodeScanner.Constants.BarCodeType.aztec
+            facing="back"
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: [
+                'qr',
+                'code128',
+                'ean13',
+                'ean8',
+                'code39',
+                'code93',
+                'codabar',
+                'pdf417',
+                'aztec'
               ],
             }}
           />
