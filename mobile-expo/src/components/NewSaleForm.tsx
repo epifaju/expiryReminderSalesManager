@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,9 +35,10 @@ interface NewSaleFormProps {
     paymentMethod: string;
     saleItems: SaleItem[];
   }) => void;
+  preselectedProduct?: Product | null;
 }
 
-const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale }) => {
+const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, preselectedProduct }) => {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -48,6 +49,13 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale }) => 
   // Create refs for TextInputs
   const customerNameRef = useRef<TextInput>(null);
   const quantityRef = useRef<TextInput>(null);
+
+  // Handle preselected product from scanner
+  useEffect(() => {
+    if (preselectedProduct) {
+      setSelectedProduct(preselectedProduct);
+    }
+  }, [preselectedProduct]);
 
   const addItemToSale = () => {
     if (!selectedProduct || !quantity || parseInt(quantity) <= 0) {

@@ -63,6 +63,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
   const [showScanner, setShowScanner] = useState(false);
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
 
   const loadSales = async () => {
     try {
@@ -174,6 +175,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       setActiveTab('list');
       loadSales();
       loadProducts();
+      setScannedProduct(null); // Réinitialiser le produit scanné
     } catch (error) {
       console.error('Erreur lors de la création de la vente:', error);
       Alert.alert('Erreur', 'Impossible de créer la vente');
@@ -254,7 +256,10 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'new' && styles.activeTab]}
-            onPress={() => setActiveTab('new')}
+            onPress={() => {
+              setActiveTab('new');
+              setScannedProduct(null); // Réinitialiser le produit scanné lors du changement d'onglet
+            }}
           >
             <Text style={[styles.tabText, activeTab === 'new' && styles.activeTabText]}>
               Nouvelle Vente
@@ -301,7 +306,11 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           )}
         </ScrollView>
       ) : (
-        <NewSaleForm products={products} onCreateSale={handleCreateSale} />
+        <NewSaleForm 
+          products={products} 
+          onCreateSale={handleCreateSale} 
+          preselectedProduct={scannedProduct}
+        />
       )}
 
       {/* Scanner de code-barres pour les ventes */}
@@ -311,6 +320,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           setShowScanner(false);
           const foundProduct = products.find(p => p.barcode === scannedBarcode);
           if (foundProduct) {
+            setScannedProduct(foundProduct);
             Alert.alert(
               'Produit trouvé',
               `${foundProduct.name} - ${foundProduct.sellingPrice}€`,
