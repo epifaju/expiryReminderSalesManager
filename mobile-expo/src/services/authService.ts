@@ -213,6 +213,8 @@ class AuthService {
     try {
       this.token = authResponse.token;
       this.user = authResponse.user;
+      console.log('💾 Token stocké en mémoire:', this.token ? `${this.token.substring(0, 20)}...` : 'ERREUR');
+      console.log('👤 Utilisateur stocké:', this.user?.username || 'ERREUR');
       // For now, just store in memory - no persistent storage
     } catch (error) {
       console.error('Error storing auth data:', error);
@@ -241,6 +243,7 @@ class AuthService {
 
   // Get current token
   getToken(): string | null {
+    console.log('🔑 getToken() appelé:', this.token ? `Token disponible (${this.token.substring(0, 20)}...)` : 'Aucun token disponible');
     return this.token;
   }
 

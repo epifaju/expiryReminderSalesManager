@@ -16,9 +16,10 @@ import ReportsScreen from './src/screens/ReportsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ExpiringProductsScreen from './src/screens/ExpiringProductsScreen';
+import ReceiptsScreen from './src/screens/ReceiptsScreen';
 import authService from './src/services/authService';
 
-type TabType = 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings';
+type TabType = 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'expiring' | 'settings';
 
 export default function App() {
   const [username, setUsername] = useState('admin');
@@ -69,6 +70,7 @@ export default function App() {
       const authResponse = await authService.login({ username, password });
       
       console.log('✅ Connexion réussie:', authResponse);
+      console.log('🔑 Token reçu:', authResponse.token ? `${authResponse.token.substring(0, 30)}...` : 'AUCUN TOKEN');
       setToken(authResponse.token);
       setIsLoggedIn(true);
       Alert.alert('Succès', 'Connexion réussie !');
@@ -128,6 +130,8 @@ export default function App() {
         return <ProductsScreen token={token} />;
       case 'sales':
         return <SalesScreen token={token} />;
+      case 'receipts':
+        return <ReceiptsScreen />;
       case 'reports':
         return <ReportsScreen token={token} />;
       case 'expiring':
@@ -242,6 +246,15 @@ export default function App() {
         >
           <Text style={[styles.navIcon, activeTab === 'sales' && styles.activeNavIcon]}>🛒</Text>
           <Text style={[styles.navText, activeTab === 'sales' && styles.activeNavText]}>Ventes</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.navItem, activeTab === 'receipts' && styles.activeNavItem]}
+          onPress={() => setActiveTab('receipts')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.navIcon, activeTab === 'receipts' && styles.activeNavIcon]}>🧾</Text>
+          <Text style={[styles.navText, activeTab === 'receipts' && styles.activeNavText]}>Reçus</Text>
         </TouchableOpacity>
         
         <TouchableOpacity

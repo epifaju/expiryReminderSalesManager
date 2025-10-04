@@ -180,6 +180,7 @@ public class DataInitializer implements CommandLineRunner {
             sale1.setFinalAmount(new BigDecimal("849.98")); // Ajouter finalAmount
             sale1.setSaleDate(LocalDateTime.now().minusDays(7));
             sale1.setCreatedAt(LocalDateTime.now().minusDays(7));
+            sale1.setCreatedBy(admin); // Associer l'utilisateur admin
             sale1 = saleRepository.save(sale1);
 
             // Items pour vente 1
@@ -207,6 +208,7 @@ public class DataInitializer implements CommandLineRunner {
             sale2.setFinalAmount(new BigDecimal("899.99")); // Ajouter finalAmount
             sale2.setSaleDate(LocalDateTime.now().minusDays(3));
             sale2.setCreatedAt(LocalDateTime.now().minusDays(3));
+            sale2.setCreatedBy(admin); // Associer l'utilisateur admin
             sale2 = saleRepository.save(sale2);
 
             SaleItem item3 = new SaleItem();
@@ -225,6 +227,7 @@ public class DataInitializer implements CommandLineRunner {
             sale3.setFinalAmount(new BigDecimal("749.98")); // Ajouter finalAmount
             sale3.setSaleDate(LocalDateTime.now());
             sale3.setCreatedAt(LocalDateTime.now());
+            sale3.setCreatedBy(admin); // Associer l'utilisateur admin
             sale3 = saleRepository.save(sale3);
 
             SaleItem item4 = new SaleItem();

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { ExportService } from '../services/exportService';
+import { Sale, SaleItem, PaymentMethod } from '../types/sales';
 
 // Use the centralized API client instead of hardcoded URLs
 import apiClient from '../services/apiClient';
@@ -22,32 +23,6 @@ interface Product {
   stockQuantity: number;
   category: string;
   purchasePrice: number;
-}
-
-interface Sale {
-  id: number;
-  saleNumber?: string;
-  saleDate: string;
-  totalAmount: number;
-  finalAmount?: number;
-  paymentMethod: 'CASH' | 'CARD' | 'TRANSFER';
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
-  saleItems?: SaleItem[];
-  totalProfit?: number;
-  totalQuantity?: number;
-  // Support for legacy field name
-  items?: SaleItem[];
-}
-
-interface SaleItem {
-  productId: number;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice?: number; // Legacy support
-  subtotal?: number; // Backend field
-  productPurchasePrice?: number; // Backend field
-  discount?: number; // Backend field
 }
 
 interface ReportsScreenProps {
@@ -211,14 +186,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     filteredSales.forEach(sale => {
       const items = sale.saleItems || sale.items || [];
       items.forEach(item => {
-        // Try to use productPurchasePrice from the sale item first
-        let purchasePrice = item.productPurchasePrice;
-        
-        // If not available, find the product in the products list
-        if (!purchasePrice) {
-          const product = productsData.find(p => p.id === item.productId || p.name === item.productName);
-          purchasePrice = product?.purchasePrice || 0;
-        }
+        // Find the product in the products list to get purchase price
+        const product = productsData.find(p => p.id === item.productId || p.name === item.productName);
+        const purchasePrice = product?.purchasePrice || 0;
         
         totalCost += purchasePrice * item.quantity;
       });

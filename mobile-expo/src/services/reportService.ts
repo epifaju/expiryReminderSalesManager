@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { Sale, SaleItem, PaymentMethod } from '../types/sales';
 
 export interface Product {
   id: number;
@@ -7,29 +8,6 @@ export interface Product {
   stockQuantity: number;
   category: string;
   purchasePrice: number;
-}
-
-export interface Sale {
-  id: number;
-  saleNumber?: string;
-  saleDate: string;
-  totalAmount: number;
-  finalAmount?: number;
-  paymentMethod: 'CASH' | 'CARD' | 'TRANSFER';
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
-  saleItems?: SaleItem[];
-  totalProfit?: number;
-  totalQuantity?: number;
-  // Support for legacy field name
-  items?: SaleItem[];
-}
-
-export interface SaleItem {
-  productId: number;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
 }
 
 export interface ReportStats {

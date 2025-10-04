@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { Alert } from 'react-native';
+import { Sale, SaleItem, PaymentMethod } from '../types/sales';
 
 interface Product {
   id: number;
@@ -10,23 +11,6 @@ interface Product {
   stockQuantity: number;
   category: string;
   purchasePrice: number;
-}
-
-interface Sale {
-  id: number;
-  saleDate: string;
-  totalAmount: number;
-  paymentMethod: string;
-  status: string;
-  items?: SaleItem[];
-}
-
-interface SaleItem {
-  productId: number;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
 }
 
 interface ReportStats {

@@ -86,14 +86,20 @@ const updateApiClientBaseUrl = (newUrl: string) => {
 apiClient.interceptors.request.use(
   (config) => {
     const token = getTokenCallback ? getTokenCallback() : null;
+    console.log('🔑 Token disponible:', token ? 'OUI' : 'NON', token ? `(${token.substring(0, 20)}...)` : '');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('📤 En-tête Authorization ajouté');
+    } else {
+      console.warn('⚠️ Pas de token d\'authentification disponible pour cette requête');
     }
+    
     console.log('🔗 API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
   (error) => {
-    console.error('❌ Request interceptor error:', error);
+    console.error('❌.Request interceptor error:', error);
     return Promise.reject(error);
   }
 );

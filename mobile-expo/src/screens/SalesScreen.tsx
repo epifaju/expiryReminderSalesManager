@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import saleService, { SaleRequest, PaymentMethod } from '../services/saleService';
 import apiClient from '../services/apiClient';
+import { receiptService } from '../services/receiptService';
 import NewSaleForm from '../components/NewSaleForm';
 import BarcodeScanner from '../components/BarcodeScanner';
+// import CreateReceiptButton from '../components/CreateReceiptButton';
 
 interface Product {
   id: number;
@@ -225,6 +227,56 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           </Text>
         </View>
         
+        {/* Bouton de génération de reçu - VERSION 2.0 */}
+        <View style={styles.receiptSection}>
+          <TouchableOpacity
+            style={styles.receiptButton}
+            onPress={() => {
+              console.log('🔍 Bouton reçu cliqué pour la vente:', sale.id);
+              Alert.alert(
+                '✅ Reçu - Version 2.0',
+                `Générer un reçu pour la vente ${sale.id}?\n\nModifications prises en compte !`,
+                [
+                  { text: 'Annuler', style: 'cancel' },
+                  { 
+                    text: 'Générer', 
+                    onPress: async () => {
+                      try {
+                        // Appeler le service de création de reçu
+                        const response = await receiptService.createReceipt(sale.id);
+                        
+                        Alert.alert(
+                          '✅ Reçu créé avec succès',
+                          `Le reçu ${response.receiptNumber} a été généré pour la vente ${sale.id}.`,
+                          [
+                            {
+                              text: 'Voir les reçus',
+                              onPress: () => {
+                                // Optionnel: naviguer vers l'écran des reçus
+                                console.log('Aller à l\'écran des reçus');
+                              },
+                            },
+                            { text: 'OK' },
+                          ]
+                        );
+                      } catch (error: any) {
+                        console.error('Erreur création reçu:', error);
+                        Alert.alert(
+                          '❌ Erreur de création',
+                          error.message || 'Impossible de créer le reçu',
+                          [{ text: 'OK' }]
+                        );
+                      }
+                    }
+                  }
+                ]
+              );
+            }}
+          >
+            <Text style={styles.receiptButtonText}>🧾 Générer Reçu v2.0</Text>
+          </TouchableOpacity>
+        </View>
+        
         {((sale.saleItems && sale.saleItems.length > 0) || (sale.items && sale.items.length > 0)) && (
           <View style={styles.itemsList}>
             <Text style={styles.itemsTitle}>Articles:</Text>
@@ -435,6 +487,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  receiptSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  receiptButton: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   paymentMethod: {
     fontSize: 12,
