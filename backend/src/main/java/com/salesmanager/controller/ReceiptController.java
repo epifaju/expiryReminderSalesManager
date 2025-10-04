@@ -44,9 +44,12 @@ public class ReceiptController {
             User user = userDetails.getUser();
             Receipt receipt = receiptService.createReceipt(saleId, user);
 
+            // Convert to DTO to avoid circular references
+            ReceiptResponse receiptResponse = new ReceiptResponse(receipt);
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Reçu créé avec succès");
-            response.put("receipt", receipt);
+            response.put("receipt", receiptResponse);
 
             return ResponseEntity.ok(response);
 

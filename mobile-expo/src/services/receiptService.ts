@@ -137,8 +137,26 @@ class ReceiptService {
         throw new Error('Erreur du serveur. Veuillez réessayer plus tard.');
       }
       
-      // Gestion des erreurs réseau
-      if (error.message === 'Network Error' || error.code === 'NETWORK_ERROR') {
+      // Gestion des erreurs réseau et de stream
+      if (error.message === 'Network Error' || 
+          error.code === 'NETWORK_ERROR' || 
+          error.message === 'stream has been aborted' ||
+          error.code === 'ERR_BAD_RESPONSE') {
+        
+        // Dans ce cas, vérifier si le reçu a quand même été créé
+        console.log('🔍 Vérification si le reçu a été créé malgré l\'erreur...');
+        try {
+          const receipts = await this.getUserReceipts();
+          const existingReceipt = receipts.find(r => r.saleId === saleId);
+          
+          if (existingReceipt) {
+            console.log('✅ Le reçu a été créé malgré l\'erreur:', existingReceipt.receiptNumber);
+            return existingReceipt;
+          }
+        } catch (checkError) {
+          console.log('❌ Impossible de vérifier les reçus existants:', checkError.message);
+        }
+        
         throw new Error('Erreur de connexion réseau. Vérifiez votre connexion internet et que le serveur backend est démarré.');
       }
       
