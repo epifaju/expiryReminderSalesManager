@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Alert, TouchableOpacity, Modal, Dimensions, Platform } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { Camera, CameraType, PermissionStatus } from 'expo-camera';
+import { BarCodeScanner as ExpoBarCodeScanner } from 'expo-barcode-scanner';
 
 interface BarcodeScannerProps {
   isVisible: boolean;
@@ -17,6 +18,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
 }) => {
   const [scanned, setScanned] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const cameraRef = useRef<Camera>(null);
 
   useEffect(() => {
     if (isVisible) {
@@ -25,13 +27,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     }
   }, [isVisible]);
 
-  // Demande de permission caméra
+  // Demande de permission caméra avec la nouvelle API
   useEffect(() => {
     const getCameraPermission = async () => {
       console.log('📱 Demande de permission pour la caméra...');
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
       console.log('📱 Statut de permission:', status);
-      setHasPermission(status === 'granted');
+      setHasPermission(status === PermissionStatus.GRANTED);
     };
 
     if (isVisible) {
@@ -145,7 +147,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     );
   }
 
-  // Scanner actif
+  // Scanner actif - nouvelle implémentation avec expo-camera
   console.log('🎥 BarcodeScanner: Scanner actif - rendu de la caméra');
   return (
     <Modal visible={isVisible} animationType="slide">
@@ -158,20 +160,24 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         </View>
 
         <View style={styles.scannerContainer}>
-          <BarCodeScanner
+          <Camera
+            ref={cameraRef}
             style={styles.scanner}
+            type={CameraType.back}
             onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-            barCodeTypes={[
-              BarCodeScanner.Constants.BarCodeType.qr,
-              BarCodeScanner.Constants.BarCodeType.code128,
-              BarCodeScanner.Constants.BarCodeType.ean13,
-              BarCodeScanner.Constants.BarCodeType.ean8,
-              BarCodeScanner.Constants.BarCodeType.code39,
-              BarCodeScanner.Constants.BarCodeType.code93,
-              BarCodeScanner.Constants.BarCodeType.codabar,
-              BarCodeScanner.Constants.BarCodeType.pdf417,
-              BarCodeScanner.Constants.BarCodeType.aztec
-            ]}
+            barCodeScannerSettings={{
+              barCodeTypes: [
+                ExpoBarCodeScanner.Constants.BarCodeType.qr,
+                ExpoBarCodeScanner.Constants.BarCodeType.code128,
+                ExpoBarCodeScanner.Constants.BarCodeType.ean13,
+                ExpoBarCodeScanner.Constants.BarCodeType.ean8,
+                ExpoBarCodeScanner.Constants.BarCodeType.code39,
+                ExpoBarCodeScanner.Constants.BarCodeType.code93,
+                ExpoBarCodeScanner.Constants.BarCodeType.codabar,
+                ExpoBarCodeScanner.Constants.BarCodeType.pdf417,
+                ExpoBarCodeScanner.Constants.BarCodeType.aztec
+              ],
+            }}
           />
           
           {/* Instructions */}
