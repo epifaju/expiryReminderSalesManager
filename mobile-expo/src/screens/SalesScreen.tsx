@@ -249,6 +249,15 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                         
                         console.log('✅ Reçu créé avec succès:', receipt);
                         
+                        // Vérifier que le reçu a été créé correctement
+                        if (!receipt) {
+                          throw new Error('Reçu non retourné par le serveur');
+                        }
+                        
+                        if (!receipt.receiptNumber) {
+                          throw new Error('Reçu créé sans numéro de reçu');
+                        }
+                        
                         Alert.alert(
                           '✅ Reçu créé avec succès',
                           `Le reçu ${receipt.receiptNumber} a été généré pour la vente ${sale.id}.\n\nMontant: ${receipt.finalAmount}€\nDate: ${new Date(receipt.createdAt).toLocaleDateString('fr-FR')}`,

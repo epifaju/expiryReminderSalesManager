@@ -39,6 +39,16 @@ export const CreateReceiptButton: React.FC<CreateReceiptButtonProps> = ({
 
     try {
       const receipt = await receiptService.createReceipt(saleId);
+      
+      // Vérifier que le reçu a été créé correctement
+      if (!receipt) {
+        throw new Error('Reçu non retourné par le serveur');
+      }
+      
+      if (!receipt.receiptNumber) {
+        throw new Error('Reçu créé sans numéro de reçu');
+      }
+      
       onReceiptCreated?.(receipt);
       
       Alert.alert(
@@ -59,9 +69,27 @@ export const CreateReceiptButton: React.FC<CreateReceiptButtonProps> = ({
       const errorMessage = error.message || 'Erreur lors de la création du reçu';
       onError?.(errorMessage);
       
+      // Déterminer le titre et le message d'erreur appropriés
+      let alertTitle = 'Erreur de création';
+      let alertMessage = errorMessage;
+      
+      if (errorMessage.includes('Un reçu existe déjà pour cette vente')) {
+        alertTitle = 'Reçu déjà existant';
+        alertMessage = 'Cette vente a déjà un reçu associé. Chaque vente ne peut avoir qu\'un seul reçu.\n\nVous pouvez consulter le reçu existant dans la section "Reçus".';
+      } else if (errorMessage.includes('Vente non trouvée')) {
+        alertTitle = 'Vente introuvable';
+        alertMessage = 'La vente spécifiée n\'existe pas ou a été supprimée.';
+      } else if (errorMessage.includes('Accès non autorisé')) {
+        alertTitle = 'Accès refusé';
+        alertMessage = 'Vous n\'avez pas les permissions nécessaires pour créer un reçu pour cette vente.';
+      } else if (errorMessage.includes('Erreur de connexion réseau')) {
+        alertTitle = 'Problème de connexion';
+        alertMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet et que le serveur backend est démarré.';
+      }
+      
       Alert.alert(
-        'Erreur de création',
-        errorMessage,
+        alertTitle,
+        alertMessage,
         [{ text: 'OK' }]
       );
     } finally {

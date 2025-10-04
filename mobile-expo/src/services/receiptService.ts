@@ -83,10 +83,67 @@ class ReceiptService {
       const response = await apiClient.post(`${this.baseUrl}/create/${saleId}`);
       console.log('✅ Reçu créé avec succès:', response.data);
       
-      return response.data.receipt;
+      // Vérifier la structure de la réponse
+      if (!response.data) {
+        throw new Error('Réponse vide reçue du serveur');
+      }
+      
+      if (!response.data.receipt) {
+        console.error('❌ Structure de réponse inattendue:', response.data);
+        throw new Error('Structure de réponse inattendue: propriété "receipt" manquante');
+      }
+      
+      const receipt = response.data.receipt;
+      
+      // Vérifier que le reçu a les propriétés essentielles
+      if (!receipt.id) {
+        console.error('❌ Reçu créé sans ID:', receipt);
+        throw new Error('Reçu créé sans ID');
+      }
+      
+      if (!receipt.receiptNumber) {
+        console.error('❌ Reçu créé sans numéro de reçu:', receipt);
+        throw new Error('Reçu créé sans numéro de reçu');
+      }
+      
+      console.log('✅ Reçu valide créé:', {
+        id: receipt.id,
+        receiptNumber: receipt.receiptNumber,
+        finalAmount: receipt.finalAmount
+      });
+      
+      return receipt;
     } catch (error: any) {
       console.error('❌ Erreur lors de la création du reçu:', error);
-      throw new Error(error.response?.data?.error || 'Erreur lors de la création du reçu');
+      
+      // Gestion spécifique des erreurs connues
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.error || error.response?.data?.message;
+        if (errorMessage && errorMessage.includes('Un reçu existe déjà pour cette vente')) {
+          throw new Error('Un reçu existe déjà pour cette vente. Chaque vente ne peut avoir qu\'un seul reçu.');
+        }
+        throw new Error(errorMessage || 'Erreur de validation de la demande');
+      }
+      
+      if (error.response?.status === 403) {
+        throw new Error('Accès non autorisé. Vérifiez vos permissions.');
+      }
+      
+      if (error.response?.status === 404) {
+        throw new Error('Vente non trouvée. Vérifiez que la vente existe.');
+      }
+      
+      if (error.response?.status >= 500) {
+        throw new Error('Erreur du serveur. Veuillez réessayer plus tard.');
+      }
+      
+      // Gestion des erreurs réseau
+      if (error.message === 'Network Error' || error.code === 'NETWORK_ERROR') {
+        throw new Error('Erreur de connexion réseau. Vérifiez votre connexion internet et que le serveur backend est démarré.');
+      }
+      
+      // Erreur par défaut
+      throw new Error(error.response?.data?.error || error.response?.data?.message || error.message || 'Erreur lors de la création du reçu');
     }
   }
 
