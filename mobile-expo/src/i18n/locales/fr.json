@@ -18,7 +18,8 @@
     "close": "Fermer",
     "done": "Terminé",
     "retry": "Réessayer",
-    "refresh": "Actualiser"
+    "refresh": "Actualiser",
+    "ok": "OK"
   },
   "navigation": {
     "dashboard": "Tableau de bord",
@@ -222,6 +223,7 @@
     "howToCreateReceipt": "Comment créer un reçu ?",
     "customer": "Client",
     "sale": "Vente",
+    "saleDate": "Date de vente",
     "notes": "Notes",
     "status": {
       "generated": "Généré",
@@ -235,7 +237,15 @@
       "mobile": "Mobile Money",
       "transfer": "Virement bancaire",
       "credit": "Crédit"
-    }
+    },
+    "notAvailable": "Reçu non disponible",
+    "cannotDownload": "Ce reçu ne peut pas être téléchargé actuellement.",
+    "downloadSuccess": "Téléchargement réussi",
+    "pdfDownloadedSuccessfully": "Le reçu PDF a été téléchargé avec succès.",
+    "saveError": "Erreur lors de la sauvegarde",
+    "downloadError": "Erreur lors du téléchargement du PDF",
+    "downloadErrorTitle": "Erreur de téléchargement",
+    "generating": "Génération"
   },
   "reports": {
     "title": "Rapports",

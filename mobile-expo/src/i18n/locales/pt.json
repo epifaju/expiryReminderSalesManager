@@ -18,7 +18,8 @@
     "close": "Fechar",
     "done": "Concluído",
     "retry": "Tentar novamente",
-    "refresh": "Atualizar"
+    "refresh": "Atualizar",
+    "ok": "OK"
   },
   "navigation": {
     "dashboard": "Painel",
@@ -222,6 +223,7 @@
     "howToCreateReceipt": "Como criar um recibo?",
     "customer": "Cliente",
     "sale": "Venda",
+    "saleDate": "Data da venda",
     "notes": "Notas",
     "status": {
       "generated": "Gerado",
@@ -235,7 +237,15 @@
       "mobile": "Mobile Money",
       "transfer": "Transferência bancária",
       "credit": "Crédito"
-    }
+    },
+    "notAvailable": "Recibo não disponível",
+    "cannotDownload": "Este recibo não pode ser baixado no momento.",
+    "downloadSuccess": "Download bem-sucedido",
+    "pdfDownloadedSuccessfully": "O recibo PDF foi baixado com sucesso.",
+    "saveError": "Erro ao salvar",
+    "downloadError": "Erro ao baixar o PDF",
+    "downloadErrorTitle": "Erro de download",
+    "generating": "Gerando"
   },
   "reports": {
     "title": "Relatórios",

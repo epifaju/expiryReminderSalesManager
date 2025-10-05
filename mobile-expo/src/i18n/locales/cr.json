@@ -18,7 +18,8 @@
     "close": "Ferma",
     "done": "Kabadu",
     "retry": "Tenta mas",
-    "refresh": "Atualiza"
+    "refresh": "Atualiza",
+    "ok": "OK"
   },
   "navigation": {
     "dashboard": "Painel",
@@ -222,6 +223,7 @@
     "howToCreateReceipt": "Kuma kria recibu?",
     "customer": "Klienti",
     "sale": "Venda",
+    "saleDate": "Data di venda",
     "notes": "Notas",
     "status": {
       "generated": "Kriadu",
@@ -235,7 +237,15 @@
       "mobile": "Mobile Money",
       "transfer": "Transferensia bankaria",
       "credit": "Kreditu"
-    }
+    },
+    "notAvailable": "Recibu ka disponivel",
+    "cannotDownload": "Es recibu ka pode baixa agora.",
+    "downloadSuccess": "Download ku suksesu",
+    "pdfDownloadedSuccessfully": "Recibu PDF baixa ku suksesu.",
+    "saveError": "Eru na guarda",
+    "downloadError": "Eru na baixa PDF",
+    "downloadErrorTitle": "Eru di download",
+    "generating": "Gerando"
   },
   "reports": {
     "title": "Relatorius",

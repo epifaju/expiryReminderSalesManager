@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { receiptService, Receipt } from '../services/receiptService';
 import { fileDownloadService, DownloadOptions } from '../services/fileDownloadService';
 
@@ -35,15 +36,16 @@ export const ReceiptPdfButton: React.FC<ReceiptPdfButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
     // Vérifier si le reçu peut être téléchargé
     if (!receiptService.isReceiptDownloadable(receipt)) {
       Alert.alert(
-        'Reçu non disponible',
-        'Ce reçu ne peut pas être téléchargé actuellement.',
-        [{ text: 'OK' }]
+        t('receipts.notAvailable'),
+        t('receipts.cannotDownload'),
+        [{ text: t('common.ok') }]
       );
       return;
     }
@@ -66,21 +68,21 @@ export const ReceiptPdfButton: React.FC<ReceiptPdfButtonProps> = ({
         onDownloadSuccess?.(result.filePath!);
         
         Alert.alert(
-          'Téléchargement réussi',
-          `Le reçu PDF a été téléchargé avec succès.\n${result.filePath}`,
-          [{ text: 'OK' }]
+          t('receipts.downloadSuccess'),
+          `${t('receipts.pdfDownloadedSuccessfully')}\n${result.filePath}`,
+          [{ text: t('common.ok') }]
         );
       } else {
-        throw new Error(result.error || 'Erreur lors de la sauvegarde');
+        throw new Error(result.error || t('receipts.saveError'));
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Erreur lors du téléchargement du PDF';
+      const errorMessage = error.message || t('receipts.downloadError');
       onDownloadError?.(errorMessage);
       
       Alert.alert(
-        'Erreur de téléchargement',
+        t('receipts.downloadErrorTitle'),
         errorMessage,
-        [{ text: 'OK' }]
+        [{ text: t('common.ok') }]
       );
     } finally {
       setIsDownloading(false);
@@ -127,7 +129,7 @@ export const ReceiptPdfButton: React.FC<ReceiptPdfButtonProps> = ({
           />
           {showLoadingText && (
             <Text style={[getTextStyle(), styles.loadingText]}>
-              Génération...
+              {t('receipts.generating')}...
             </Text>
           )}
         </View>
@@ -136,7 +138,7 @@ export const ReceiptPdfButton: React.FC<ReceiptPdfButtonProps> = ({
 
     return (
       <Text style={[getTextStyle(), textStyle]}>
-        📄 Télécharger PDF
+        📄 {t('receipts.downloadPdf')}
       </Text>
     );
   };
