@@ -172,3 +172,4 @@ if (typeof window !== "undefined") {
   // Dans Node.js
   testReceiptCreation();
 }
+

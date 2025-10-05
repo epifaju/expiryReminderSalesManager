@@ -22,3 +22,4 @@ Write-Host "🔍 Logs détaillés activés pour diagnostiquer les reçus" -Foreg
 
 Write-Host "✅ Backend démarré. Vérifiez les logs ci-dessus pour les erreurs." -ForegroundColor Green
 Write-Host "💡 Si vous voyez des erreurs liées à la table 'receipts', c'est le problème !" -ForegroundColor Yellow
+

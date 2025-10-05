@@ -9,9 +9,11 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import productService from '../services/productService';
 import DatePicker from '../components/DatePicker';
 import BarcodeScanner from '../components/BarcodeScanner';
+import { formatPrice } from '../utils/formatters';
 
 interface Product {
   id: number;
@@ -34,6 +36,7 @@ interface ProductsScreenProps {
 }
 
 const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
+  const { t, i18n } = useTranslation();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,7 +70,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
       console.log('✅ Produits chargés:', productsArray.length);
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
-      Alert.alert('Erreur', 'Impossible de charger les produits');
+      Alert.alert(t('common.error'), t('products.loadError'));
       setProducts([]);
     } finally {
       setLoading(false);
@@ -83,7 +86,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
   const addProduct = async () => {
     try {
       if (!newProduct.name || !newProduct.purchasePrice || !newProduct.sellingPrice) {
-        Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+        Alert.alert(t('common.error'), t('validation.fillRequiredFields'));
         return;
       }
 
@@ -98,7 +101,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
 
       await productService.createProduct(productData);
 
-      Alert.alert('Succès', 'Produit ajouté avec succès');
+      Alert.alert(t('common.success'), t('products.productAdded'));
       setShowAddForm(false);
       setNewProduct({
         name: '',
@@ -116,7 +119,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
       loadProducts();
     } catch (error) {
       console.error('Erreur lors de l\'ajout du produit:', error);
-      Alert.alert('Erreur', 'Impossible d\'ajouter le produit');
+      Alert.alert(t('common.error'), t('products.addError'));
     }
   };
 
@@ -128,10 +131,10 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
     const existingProduct = products.find(p => p.barcode === scannedBarcode);
     if (existingProduct) {
       Alert.alert(
-        'Produit trouvé',
-        `Produit existant trouvé: ${existingProduct.name}`,
+        t('products.productFound'),
+        `${t('products.existingProduct')}: ${existingProduct.name}`,
         [
-          { text: 'Utiliser comme base', onPress: () => {
+          { text: t('products.useAsBase'), onPress: () => {
             setNewProduct({
               ...newProduct,
               name: existingProduct.name,
@@ -143,7 +146,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
               unit: existingProduct.unit,
             });
           }},
-          { text: 'Nouveau produit', onPress: () => {
+          { text: t('products.newProduct'), onPress: () => {
             setNewProduct({ ...newProduct, barcode: scannedBarcode });
           }}
         ]
@@ -164,15 +167,15 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
     <View style={styles.productCard}>
       <View style={styles.productHeader}>
         <Text style={styles.productName}>{product.name}</Text>
-        <Text style={styles.productCategory}>{product.category || 'Non catégorisé'}</Text>
+        <Text style={styles.productCategory}>{product.category || t('products.noCategory')}</Text>
       </View>
       <Text style={styles.productDescription}>{product.description}</Text>
       <View style={styles.productDetails}>
-        <Text style={styles.productPrice}>Prix: {product.sellingPrice}€</Text>
-        <Text style={styles.productStock}>Stock: {product.stockQuantity}</Text>
+        <Text style={styles.productPrice}>{t('products.price')}: {formatPrice(product.sellingPrice, i18n.language)}</Text>
+        <Text style={styles.productStock}>{t('products.stock')}: {product.stockQuantity}</Text>
       </View>
       {product.stockQuantity < product.minStockLevel && (
-        <Text style={styles.lowStockWarning}>⚠️ Stock faible</Text>
+        <Text style={styles.lowStockWarning}>⚠️ {t('products.lowStock')}</Text>
       )}
     </View>
   );
@@ -181,7 +184,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>📦 Ajouter un Produit</Text>
+          <Text style={styles.headerTitle}>📦 {t('products.addProduct')}</Text>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => setShowAddForm(false)}
@@ -193,14 +196,14 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
         <ScrollView style={styles.formContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Nom du produit *"
+            placeholder={`${t('products.productName')} *`}
             value={newProduct.name}
             onChangeText={(text) => setNewProduct({...newProduct, name: text})}
           />
           
           <TextInput
             style={styles.input}
-            placeholder="Description"
+            placeholder={t('products.description')}
             value={newProduct.description}
             onChangeText={(text) => setNewProduct({...newProduct, description: text})}
             multiline
@@ -209,7 +212,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
         <View style={styles.barcodeContainer}>
           <TextInput
             style={[styles.input, styles.barcodeInput]}
-            placeholder="Code-barres"
+            placeholder={t('products.barcode')}
             value={newProduct.barcode}
             onChangeText={(text) => setNewProduct({...newProduct, barcode: text})}
           />
@@ -227,7 +230,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           
           <TextInput
             style={styles.input}
-            placeholder="Prix d'achat *"
+            placeholder={`${t('products.purchasePrice')} *`}
             value={newProduct.purchasePrice}
             onChangeText={(text) => setNewProduct({...newProduct, purchasePrice: text})}
             keyboardType="numeric"
@@ -235,7 +238,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           
           <TextInput
             style={styles.input}
-            placeholder="Prix de vente *"
+            placeholder={`${t('products.sellingPrice')} *`}
             value={newProduct.sellingPrice}
             onChangeText={(text) => setNewProduct({...newProduct, sellingPrice: text})}
             keyboardType="numeric"
@@ -243,7 +246,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           
           <TextInput
             style={styles.input}
-            placeholder="Quantité en stock"
+            placeholder={t('products.stockQuantity')}
             value={newProduct.stockQuantity}
             onChangeText={(text) => setNewProduct({...newProduct, stockQuantity: text})}
             keyboardType="numeric"
@@ -251,7 +254,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           
           <TextInput
             style={styles.input}
-            placeholder="Stock minimum"
+            placeholder={t('products.minStockLevel')}
             value={newProduct.minStockLevel}
             onChangeText={(text) => setNewProduct({...newProduct, minStockLevel: text})}
             keyboardType="numeric"
@@ -259,38 +262,38 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           
           <TextInput
             style={styles.input}
-            placeholder="Catégorie"
+            placeholder={t('products.category')}
             value={newProduct.category}
             onChangeText={(text) => setNewProduct({...newProduct, category: text})}
           />
           
           <TextInput
             style={styles.input}
-            placeholder="Unité (pcs, kg, l...)"
+            placeholder={`${t('products.unit')} (pcs, kg, l...)`}
             value={newProduct.unit}
             onChangeText={(text) => setNewProduct({...newProduct, unit: text})}
           />
 
-          <Text style={styles.sectionTitle}>📅 Dates (optionnel)</Text>
+          <Text style={styles.sectionTitle}>📅 {t('products.datesOptional')}</Text>
           
           <DatePicker
-            label="Date de fabrication"
+            label={t('products.manufacturingDate')}
             value={newProduct.manufacturingDate}
             onDateChange={(date) => setNewProduct({...newProduct, manufacturingDate: date})}
-            placeholder="Sélectionner la date de fabrication"
+            placeholder={t('products.selectManufacturingDate')}
             maximumDate={new Date().toISOString().split('T')[0]} // Cannot be in the future
           />
           
           <DatePicker
-            label="Date d'expiration"
+            label={t('products.expiryDate')}
             value={newProduct.expiryDate}
             onDateChange={(date) => setNewProduct({...newProduct, expiryDate: date})}
-            placeholder="Sélectionner la date d'expiration"
+            placeholder={t('products.selectExpiryDate')}
             minimumDate={newProduct.manufacturingDate || new Date().toISOString().split('T')[0]} // Must be after manufacturing date
           />
 
           <TouchableOpacity style={styles.addButton} onPress={addProduct}>
-            <Text style={styles.addButtonText}>Ajouter le Produit</Text>
+            <Text style={styles.addButtonText}>{t('products.addProduct')}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -299,7 +302,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           isVisible={showScanner}
           onScan={handleBarcodeScan}
           onClose={() => setShowScanner(false)}
-          title="Scanner le code-barres"
+          title={t('products.scanBarcode')}
         />
       </View>
     );
@@ -308,19 +311,19 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📦 Gestion des Produits</Text>
+        <Text style={styles.headerTitle}>📦 {t('products.title')}</Text>
         <TouchableOpacity
           style={styles.addProductButton}
           onPress={() => setShowAddForm(true)}
         >
-          <Text style={styles.addProductButtonText}>+ Ajouter</Text>
+          <Text style={styles.addProductButtonText}>+ {t('common.add')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher un produit..."
+          placeholder={t('products.searchProducts')}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -333,7 +336,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
         }
       >
         <Text style={styles.productsCount}>
-          {filteredProducts.length} produit(s) trouvé(s)
+          {filteredProducts.length} {t('products.productsFound')}
         </Text>
 
         {filteredProducts.length > 0 ? (
@@ -342,9 +345,9 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ token }) => {
           ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Aucun produit trouvé</Text>
+            <Text style={styles.emptyStateText}>{t('products.noProductsFound')}</Text>
             <Text style={styles.emptyStateSubtext}>
-              {searchQuery ? 'Essayez une autre recherche' : 'Ajoutez votre premier produit'}
+              {searchQuery ? t('products.tryAnotherSearch') : t('products.addFirstProduct')}
             </Text>
           </View>
         )}

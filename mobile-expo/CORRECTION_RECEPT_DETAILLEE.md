@@ -151,3 +151,4 @@ Après ces corrections, le bouton "Générer Réçu v2.0" devrait :
 3. **Envoi par email** : Possibilité d'envoyer le reçu par email au client
 4. **Signature numérique** : Ajout d'une signature numérique pour l'authenticité
 5. **Archivage automatique** : Système d'archivage des anciens reçus
+

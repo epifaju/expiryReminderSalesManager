@@ -115,3 +115,4 @@ Si le problème persiste après ces étapes :
 ---
 
 **Status** : ✅ Solution implémentée - Redémarrage du backend requis
+

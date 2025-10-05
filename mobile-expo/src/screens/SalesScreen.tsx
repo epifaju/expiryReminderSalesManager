@@ -8,11 +8,13 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import saleService, { SaleRequest, PaymentMethod } from '../services/saleService';
 import apiClient from '../services/apiClient';
 import { receiptService } from '../services/receiptService';
 import NewSaleForm from '../components/NewSaleForm';
 import BarcodeScanner from '../components/BarcodeScanner';
+import { formatPrice, formatDate } from '../utils/formatters';
 // import CreateReceiptButton from '../components/CreateReceiptButton';
 
 interface Product {
@@ -59,6 +61,7 @@ interface SalesScreenProps {
 }
 
 const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
+  const { t, i18n } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -171,7 +174,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
 
       await saleService.createSale(requestData);
 
-      Alert.alert('Succès', 'Vente créée avec succès');
+      Alert.alert(t('common.success'), t('sales.saleCreated'));
       
       // Switch to list tab and reload data
       setActiveTab('list');
@@ -180,20 +183,20 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       setScannedProduct(null); // Réinitialiser le produit scanné
     } catch (error) {
       console.error('Erreur lors de la création de la vente:', error);
-      Alert.alert('Erreur', 'Impossible de créer la vente');
+      Alert.alert(t('common.error'), t('sales.saleError'));
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDateLocal = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return formatDate(date, i18n.language);
   };
 
   const formatCurrency = (amount: number | undefined | null) => {
     if (amount === undefined || amount === null || isNaN(amount)) {
-      return '0.00 €';
+      return formatPrice(0, i18n.language);
     }
-    return `${Number(amount).toFixed(2)} €`;
+    return formatPrice(amount, i18n.language);
   };
 
   const SaleCard: React.FC<{ sale: Sale }> = ({ sale }) => {
@@ -211,13 +214,13 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     return (
       <View style={styles.saleCard}>
         <View style={styles.saleHeader}>
-          <Text style={styles.saleId}>Vente #{sale.id}</Text>
+          <Text style={styles.saleId}>{t('sales.sale')} #{sale.id}</Text>
           <Text style={styles.saleAmount}>{formatCurrency(displayAmount)}</Text>
         </View>
         
         <View style={styles.saleDetails}>
-          <Text style={styles.saleDate}>{formatDate(sale.saleDate)}</Text>
-          <Text style={styles.saleCustomer}>{sale.customerName || 'Client'}</Text>
+          <Text style={styles.saleDate}>{formatDateLocal(sale.saleDate)}</Text>
+          <Text style={styles.saleCustomer}>{sale.customerName || t('sales.customer')}</Text>
         </View>
         
         <View style={styles.saleFooter}>
@@ -297,13 +300,13 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
               );
             }}
           >
-            <Text style={styles.receiptButtonText}>🧾 Générer Reçu v2.0</Text>
+            <Text style={styles.receiptButtonText}>🧾 {t('sales.generateReceipt')}</Text>
           </TouchableOpacity>
         </View>
         
         {((sale.saleItems && sale.saleItems.length > 0) || (sale.items && sale.items.length > 0)) && (
           <View style={styles.itemsList}>
-            <Text style={styles.itemsTitle}>Articles:</Text>
+            <Text style={styles.itemsTitle}>{t('sales.items')}:</Text>
             {(sale.saleItems || sale.items || []).map((item, index) => (
               <Text key={index} style={styles.itemText}>
                 • {item.productName} x{item.quantity} = {formatCurrency(item.totalPrice || (item.unitPrice * item.quantity))}
@@ -320,7 +323,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     <View style={styles.container}>
       {/* Header with Tabs */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛒 Gestion des Ventes</Text>
+        <Text style={styles.headerTitle}>🛒 {t('sales.title')}</Text>
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'list' && styles.activeTab]}
@@ -351,7 +354,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
             style={styles.scannerButton}
             onPress={() => setShowScanner(true)}
           >
-            <Text style={styles.scannerButtonText}>🔍 Scanner un Produit</Text>
+            <Text style={styles.scannerButtonText}>🔍 {t('sales.scanProduct')}</Text>
           </TouchableOpacity>
         </View>
       )}

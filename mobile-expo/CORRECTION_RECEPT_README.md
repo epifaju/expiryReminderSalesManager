@@ -104,3 +104,4 @@ Le bouton "Générer Réçu v2.0" dans l'écran des ventes affichait seulement u
 ## Status : ✅ Corrigé
 
 Le problème de génération de reçus est maintenant résolu. Les utilisateurs peuvent créer des reçus correctement et ils apparaissent dans la liste des reçus.
+

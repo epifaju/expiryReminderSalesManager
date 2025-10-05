@@ -8,8 +8,10 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import productService from '../services/productService';
 import { reportService } from '../services/reportService';
+import { formatPrice, formatDate } from '../utils/formatters';
 
 interface Product {
   id: number;
@@ -67,6 +69,7 @@ interface DashboardScreenProps {
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, isActive = true }) => {
+  const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<DashboardStats>({
     todaySales: 0,
     totalProducts: 0,
@@ -80,12 +83,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
   // Fonction pour formater les montants monétaires
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    return formatPrice(amount, i18n.language);
   };
 
   const formatTimeAgo = (date: Date): string => {
@@ -205,12 +203,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
       recentSales.forEach((sale: Sale, index: number) => {
         const amount = sale.finalAmount || sale.totalAmount || 0;
-        const customerName = sale.customerName || 'Client';
+        const customerName = sale.customerName || t('sales.customer');
         activity.push({
           id: `sale-${sale.id}`,
           type: 'sale',
           icon: '🛒',
-          text: `Vente #${sale.id} - ${formatCurrency(amount)} - ${customerName}`,
+          text: `${t('sales.sale')} #${sale.id} - ${formatCurrency(amount)} - ${customerName}`,
           timestamp: new Date(sale.saleDate)
         });
       });
@@ -357,7 +355,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
       <Text style={styles.statTitle}>{title}</Text>
       <Text style={styles.statValue}>{value}</Text>
       {onPress && (
-        <Text style={styles.clickHint}>Appuyez pour voir</Text>
+        <Text style={styles.clickHint}>{t('dashboard.clickToView')}</Text>
       )}
     </TouchableOpacity>
   );
@@ -371,9 +369,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
         }>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🛍️ Sales Manager</Text>
+          <Text style={styles.headerTitle}>🛍️ {t('app.name')}</Text>
           <Text style={styles.headerSubtitle}>
-            Tableau de bord - Gestion de ventes et stock
+            {t('dashboard.subtitle')}
           </Text>
         </View>
 
@@ -381,13 +379,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
         <View style={styles.statsContainer}>
           <View style={styles.statsRow}>
             <StatCard
-              title="📊 Ventes Aujourd'hui"
+              title={`📊 ${t('dashboard.todaySales')}`}
               value={stats.todaySales}
               color="#667eea"
               onPress={handleTodaySalesClick}
             />
             <StatCard
-              title="📦 Produits en Stock"
+              title={`📦 ${t('dashboard.productsInStock')}`}
               value={stats.totalProducts}
               color="#28a745"
               onPress={handleProductsStockClick}
@@ -396,12 +394,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
           <View style={styles.statsRow}>
             <StatCard
-              title="💰 Revenus du Mois"
+              title={`💰 ${t('dashboard.monthlyRevenue')}`}
               value={formatCurrency(stats.monthlyRevenue)}
               color="#764ba2"
             />
             <StatCard
-              title="⚠️ Stock Faible"
+              title={`⚠️ ${t('dashboard.lowStock')}`}
               value={stats.lowStock}
               color="#ffc107"
             />
@@ -409,13 +407,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
           <View style={styles.statsRow}>
             <StatCard
-              title="⏰ Produits Expirants"
+              title={`⏰ ${t('dashboard.expiringProducts')}`}
               value={stats.expiringProducts}
               color="#ff9800"
               onPress={handleExpiringProductsClick}
             />
             <StatCard
-              title="❌ Produits Expirés"
+              title={`❌ ${t('dashboard.expiredProducts')}`}
               value={stats.expiredProducts}
               color="#dc3545"
               onPress={handleExpiredProductsClick}
@@ -425,7 +423,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions Rapides</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
           
           <View style={styles.actionsRow}>
             <TouchableOpacity 
@@ -433,7 +431,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
               onPress={handleNewSale}
             >
               <Text style={styles.actionIcon}>🛒</Text>
-              <Text style={styles.actionText}>Nouvelle Vente</Text>
+              <Text style={styles.actionText}>{t('sales.newSale')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -441,7 +439,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
               onPress={handleAddProduct}
             >
               <Text style={styles.actionIcon}>📦</Text>
-              <Text style={styles.actionText}>Ajouter Produit</Text>
+              <Text style={styles.actionText}>{t('products.addProduct')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -451,7 +449,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
               onPress={handleViewReports}
             >
               <Text style={styles.actionIcon}>📊</Text>
-              <Text style={styles.actionText}>Voir Rapports</Text>
+              <Text style={styles.actionText}>{t('dashboard.viewReports')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -459,14 +457,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
               onPress={handleStockAlerts}
             >
               <Text style={styles.actionIcon}>⚠️</Text>
-              <Text style={styles.actionText}>Alertes Stock</Text>
+              <Text style={styles.actionText}>{t('dashboard.stockAlerts')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Recent Activity */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Activité Récente</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.recentActivity')}</Text>
           
           <View style={styles.activityCard}>
             {recentActivity.length > 0 ? (

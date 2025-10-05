@@ -1,22 +1,26 @@
 import React from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from '../components/LanguageSelector';
 
 interface SettingsScreenProps {
   onLogout: () => void;
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
+  const { t } = useTranslation();
+  
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t('auth.logout'),
+      t('settings.logoutConfirm'),
       [
         {
-          text: 'Annuler',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Déconnexion',
+          text: t('auth.logout'),
           style: 'destructive',
           onPress: onLogout,
         },
@@ -27,93 +31,89 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚙️ Paramètres</Text>
+        <Text style={styles.headerTitle}>⚙️ {t('settings.title')}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Compte</Text>
+          <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>👤</Text>
-            <Text style={styles.settingText}>Profil utilisateur</Text>
+            <Text style={styles.settingText}>{t('settings.userProfile')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>🔒</Text>
-            <Text style={styles.settingText}>Changer le mot de passe</Text>
+            <Text style={styles.settingText}>{t('settings.changePassword')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Application</Text>
+          <Text style={styles.sectionTitle}>{t('settings.application')}</Text>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>🔔</Text>
-            <Text style={styles.settingText}>Notifications</Text>
+            <Text style={styles.settingText}>{t('settings.notifications')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>🌙</Text>
-            <Text style={styles.settingText}>Mode sombre</Text>
+            <Text style={styles.settingText}>{t('settings.darkMode')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
-            <Text style={styles.settingIcon}>🌍</Text>
-            <Text style={styles.settingText}>Langue</Text>
-            <Text style={styles.settingArrow}>›</Text>
-          </TouchableOpacity>
+          <LanguageSelector />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Données</Text>
+          <Text style={styles.sectionTitle}>{t('settings.data')}</Text>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>💾</Text>
-            <Text style={styles.settingText}>Sauvegarde</Text>
+            <Text style={styles.settingText}>{t('settings.backup')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>📤</Text>
-            <Text style={styles.settingText}>Export des données</Text>
+            <Text style={styles.settingText}>{t('settings.exportData')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={styles.sectionTitle}>{t('settings.support')}</Text>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>❓</Text>
-            <Text style={styles.settingText}>Aide</Text>
+            <Text style={styles.settingText}>{t('settings.help')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>📧</Text>
-            <Text style={styles.settingText}>Contacter le support</Text>
+            <Text style={styles.settingText}>{t('settings.contactSupport')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem}>
             <Text style={styles.settingIcon}>ℹ️</Text>
-            <Text style={styles.settingText}>À propos</Text>
+            <Text style={styles.settingText}>{t('settings.about')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>🚪 Déconnexion</Text>
+          <Text style={styles.logoutButtonText}>🚪 {t('auth.logout')}</Text>
         </TouchableOpacity>
 
         <View style={styles.versionInfo}>
-          <Text style={styles.versionText}>Sales Manager Mobile</Text>
-          <Text style={styles.versionNumber}>Version 1.0.0</Text>
+          <Text style={styles.versionText}>{t('app.name')}</Text>
+          <Text style={styles.versionNumber}>{t('settings.version')} 1.0.0</Text>
         </View>
         
         {/* Extra space at bottom to ensure scrollability */}

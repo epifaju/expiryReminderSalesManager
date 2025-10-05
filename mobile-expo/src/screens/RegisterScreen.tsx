@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import authService from '../services/authService';
 
 interface RegisterScreenProps {
@@ -16,6 +17,7 @@ interface RegisterScreenProps {
 }
 
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegisterSuccess }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -26,38 +28,38 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
 
   const validateForm = () => {
     if (!formData.username.trim()) {
-      Alert.alert('Erreur', 'Le nom d\'utilisateur est requis');
+      Alert.alert(t('common.error'), t('validation.usernameRequired'));
       return false;
     }
     
     if (formData.username.length < 3) {
-      Alert.alert('Erreur', 'Le nom d\'utilisateur doit contenir au moins 3 caractères');
+      Alert.alert(t('common.error'), t('validation.usernameMinLength'));
       return false;
     }
 
     if (!formData.email.trim()) {
-      Alert.alert('Erreur', 'L\'email est requis');
+      Alert.alert(t('common.error'), t('validation.emailRequired'));
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert('Erreur', 'Veuillez entrer un email valide');
+      Alert.alert(t('common.error'), t('validation.invalidEmail'));
       return false;
     }
 
     if (!formData.password) {
-      Alert.alert('Erreur', 'Le mot de passe est requis');
+      Alert.alert(t('common.error'), t('validation.passwordRequired'));
       return false;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+      Alert.alert(t('common.error'), t('validation.passwordMinLength'));
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
+      Alert.alert(t('common.error'), t('validation.passwordsNotMatch'));
       return false;
     }
 
@@ -90,11 +92,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
       console.log('Inscription réussie:', response);
       
       Alert.alert(
-        'Succès', 
-        'Inscription réussie ! Vous pouvez maintenant vous connecter avec vos identifiants.',
+        t('common.success'), 
+        t('auth.registerSuccess'),
         [
           {
-            text: 'OK',
+            text: t('common.ok'),
             onPress: onRegisterSuccess
           }
         ]
@@ -116,7 +118,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
         }
       }
       
-      Alert.alert('Erreur d\'inscription', errorMessage);
+      Alert.alert(t('auth.registerError'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -131,13 +133,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Sales Manager Mobile</Text>
-      <Text style={styles.subtitle}>Créer un compte</Text>
+      <Text style={styles.title}>{t('app.name')}</Text>
+      <Text style={styles.subtitle}>{t('auth.createAccount')}</Text>
       
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Nom d'utilisateur *"
+          placeholder={`${t('auth.username')} *`}
           value={formData.username}
           onChangeText={(text) => updateFormData('username', text)}
           autoCapitalize="none"
@@ -146,7 +148,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
         
         <TextInput
           style={styles.input}
-          placeholder="Email *"
+          placeholder={`${t('auth.email')} *`}
           value={formData.email}
           onChangeText={(text) => updateFormData('email', text)}
           keyboardType="email-address"
@@ -156,7 +158,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
         
         <TextInput
           style={styles.input}
-          placeholder="Mot de passe *"
+          placeholder={`${t('auth.password')} *`}
           value={formData.password}
           onChangeText={(text) => updateFormData('password', text)}
           secureTextEntry
@@ -164,7 +166,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
         
         <TextInput
           style={styles.input}
-          placeholder="Confirmer le mot de passe *"
+          placeholder={`${t('auth.confirmPassword')} *`}
           value={formData.confirmPassword}
           onChangeText={(text) => updateFormData('confirmPassword', text)}
           secureTextEntry
@@ -182,12 +184,12 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ onBackToLogin, onRegist
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? 'Inscription en cours...' : 'S\'inscrire'}
+            {loading ? t('auth.registering') : t('auth.register')}
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.linkButton} onPress={onBackToLogin}>
-          <Text style={styles.linkText}>Déjà un compte ? Se connecter</Text>
+          <Text style={styles.linkText}>{t('auth.haveAccount')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

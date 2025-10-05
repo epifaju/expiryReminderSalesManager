@@ -75,3 +75,4 @@ if (typeof window !== "undefined") {
   checkH2Database();
   printManualCheckInstructions();
 }
+

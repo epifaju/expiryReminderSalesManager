@@ -93,3 +93,4 @@ export interface SaleResponse {
   totalProfit?: number;
   totalQuantity?: number;
 }
+

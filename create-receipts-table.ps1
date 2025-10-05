@@ -60,3 +60,4 @@ Write-Host "4. Exécutez le script" -ForegroundColor White
 Write-Host "5. Vérifiez avec: SELECT * FROM RECEIPTS;" -ForegroundColor White
 
 Write-Host "`n💡 Alternative: Redémarrez le backend avec des logs détaillés pour voir les erreurs Hibernate" -ForegroundColor Yellow
+
