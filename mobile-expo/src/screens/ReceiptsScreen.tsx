@@ -10,11 +10,13 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Receipt, receiptService } from '../services/receiptService';
 import { ReceiptCard } from '../components/ReceiptCard';
 import { fileDownloadService } from '../services/fileDownloadService';
 
 export const ReceiptsScreen: React.FC = () => {
+  const { t } = useTranslation();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,24 +32,24 @@ export const ReceiptsScreen: React.FC = () => {
       console.error('❌ Erreur lors du chargement des reçus:', error);
       
       // Message d'erreur plus spécifique
-      let errorMessage = 'Impossible de charger les reçus';
-      let errorTitle = 'Erreur';
+      let errorMessage = t('receipts.loadError');
+      let errorTitle = t('errors.title');
       
       if (error.message.includes('Network Error')) {
-        errorMessage = 'Erreur de connexion au serveur. Vérifiez que le backend est démarré et accessible.';
-        errorTitle = 'Problème de connexion';
+        errorMessage = t('receipts.connectionError');
+        errorTitle = t('receipts.connectionProblem');
       } else if (error.message.includes('403') || error.message.includes('Unauthorized')) {
-        errorMessage = 'Veillez-vous reconnecter pour accéder aux reçus.';
-        errorTitle = 'Authentification requise';
+        errorMessage = t('receipts.authRequired');
+        errorTitle = t('receipts.authRequiredTitle');
       } else if (error.message.includes('404')) {
-        errorMessage = 'Service de reçus non disponible.';
-        errorTitle = 'Service indisponible';
+        errorMessage = t('receipts.serviceUnavailable');
+        errorTitle = t('receipts.serviceUnavailableTitle');
       }
       
       Alert.alert(
         errorTitle,
         errorMessage,
-        [{ text: 'OK' }]
+        [{ text: t('common.ok') }]
       );
     } finally {
       setLoading(false);
@@ -80,16 +82,16 @@ export const ReceiptsScreen: React.FC = () => {
 
   const handleReceiptPress = (receipt: Receipt) => {
     Alert.alert(
-      'Détails du reçu',
-      `Numéro: ${receipt.receiptNumber}\n` +
-      `Montant: ${receiptService.formatCurrency(receipt.finalAmount)}\n` +
-      `Date: ${receiptService.formatDate(receipt.createdAt)}\n` +
-      `Statut: ${receiptService.getStatusText(receipt.status)}\n` +
-      `Téléchargements: ${receipt.downloadCount}`,
+      t('receipts.details'),
+      `${t('receipts.number')}: ${receipt.receiptNumber}\n` +
+      `${t('receipts.amount')}: ${receiptService.formatCurrency(receipt.finalAmount)}\n` +
+      `${t('receipts.date')}: ${receiptService.formatDate(receipt.createdAt)}\n` +
+      `${t('receipts.status')}: ${receiptService.getStatusText(receipt.status)}\n` +
+      `${t('receipts.downloads')}: ${receipt.downloadCount}`,
       [
-        { text: 'Fermer', style: 'cancel' },
+        { text: t('common.close'), style: 'cancel' },
         {
-          text: 'Télécharger PDF',
+          text: t('receipts.downloadPdf'),
           onPress: () => {
             // Simuler un clic sur le bouton de téléchargement
             handleDownloadStart(receipt.id);
@@ -101,12 +103,12 @@ export const ReceiptsScreen: React.FC = () => {
 
   const createTestReceipt = async () => {
     Alert.alert(
-      'Comment créer un reçu',
-      'Pour générer un reçu:\n\n1. Allez dans l\'écran "Ventes"\n2. Trouvez une vente existante\n3. Cliquez sur "🧾 Générer Reçu v2.0"\n4. Suivez les confirmations\n\nLes reçus créés apparaîtront automatiquement dans cette liste.',
+      t('receipts.howToCreate'),
+      t('receipts.createInstructions'),
       [
-        { text: 'Compris', style: 'default' },
+        { text: t('receipts.understood'), style: 'default' },
         { 
-          text: 'Actualiser la liste',
+          text: t('receipts.refreshList'),
           onPress: () => loadReceipts()
         }
       ]
@@ -126,16 +128,16 @@ export const ReceiptsScreen: React.FC = () => {
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateTitle}>Aucun reçu trouvé</Text>
+      <Text style={styles.emptyStateTitle}>{t('receipts.noReceiptsFound')}</Text>
       <Text style={styles.emptyStateSubtitle}>
-        Vos reçus générés apparaîtront ici
+        {t('receipts.receiptsWillAppearHere')}
       </Text>
       <TouchableOpacity
         style={styles.createButton}
         onPress={createTestReceipt}
       >
         <Text style={styles.createButtonText}>
-          📖 Comment créer un reçu ?
+          📖 {t('receipts.howToCreateReceipt')}
         </Text>
       </TouchableOpacity>
       
@@ -144,7 +146,7 @@ export const ReceiptsScreen: React.FC = () => {
         onPress={loadReceipts}
       >
         <Text style={styles.createButtonText}>
-          🔄 Actualiser la liste
+          🔄 {t('receipts.refreshList')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -152,9 +154,9 @@ export const ReceiptsScreen: React.FC = () => {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={styles.title}>Mes Reçus</Text>
+      <Text style={styles.title}>{t('receipts.title')}</Text>
       <Text style={styles.subtitle}>
-        {receipts.length} reçu{receipts.length > 1 ? 's' : ''}
+        {receipts.length} {receipts.length > 1 ? t('receipts.receipts') : t('receipts.receipt')}
       </Text>
     </View>
   );
@@ -164,7 +166,7 @@ export const ReceiptsScreen: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Chargement des reçus...</Text>
+          <Text style={styles.loadingText}>{t('receipts.loadingReceipts')}</Text>
         </View>
       </SafeAreaView>
     );

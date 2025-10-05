@@ -47,6 +47,7 @@
     "registerSuccess": "Inscription réussie ! Vous pouvez maintenant vous connecter avec vos identifiants.",
     "registerError": "Erreur d'inscription",
     "haveAccount": "Déjà un compte ? Se connecter",
+    "noAccount": "Pas de compte ? S'inscrire",
     "connecting": "Connexion...",
     "disconnecting": "Déconnexion..."
   },
@@ -194,10 +195,47 @@
   },
   "receipts": {
     "title": "Mes Reçus",
+    "receipt": "reçu",
+    "receipts": "reçus",
     "noReceiptsFound": "Aucun reçu trouvé",
+    "receiptsWillAppearHere": "Vos reçus générés apparaîtront ici",
     "loadingReceipts": "Chargement des reçus...",
     "downloadError": "Impossible de télécharger le PDF",
-    "loadError": "Impossible de charger les reçus"
+    "loadError": "Impossible de charger les reçus",
+    "connectionError": "Erreur de connexion au serveur. Vérifiez que le backend est démarré et accessible.",
+    "connectionProblem": "Problème de connexion",
+    "authRequired": "Veuillez-vous reconnecter pour accéder aux reçus.",
+    "authRequiredTitle": "Authentification requise",
+    "serviceUnavailable": "Service de reçus non disponible.",
+    "serviceUnavailableTitle": "Service indisponible",
+    "details": "Détails du reçu",
+    "number": "Numéro",
+    "amount": "Montant",
+    "date": "Date",
+    "status": "Statut",
+    "downloads": "Téléchargements",
+    "downloadPdf": "Télécharger PDF",
+    "howToCreate": "Comment créer un reçu",
+    "createInstructions": "Pour générer un reçu:\n\n1. Allez dans l'écran \"Ventes\"\n2. Trouvez une vente existante\n3. Cliquez sur \"🧾 Générer Reçu v2.0\"\n4. Suivez les confirmations\n\nLes reçus créés apparaîtront automatiquement dans cette liste.",
+    "understood": "Compris",
+    "refreshList": "Actualiser la liste",
+    "howToCreateReceipt": "Comment créer un reçu ?",
+    "customer": "Client",
+    "sale": "Vente",
+    "notes": "Notes",
+    "status": {
+      "generated": "Généré",
+      "sent": "Envoyé",
+      "delivered": "Livré",
+      "failed": "Échec"
+    },
+    "paymentMethods": {
+      "cash": "Espèces",
+      "card": "Carte bancaire",
+      "mobile": "Mobile Money",
+      "transfer": "Virement bancaire",
+      "credit": "Crédit"
+    }
   },
   "reports": {
     "title": "Rapports",

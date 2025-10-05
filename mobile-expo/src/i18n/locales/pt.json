@@ -47,6 +47,7 @@
     "registerSuccess": "Registro realizado com sucesso! Você pode fazer login agora.",
     "registerError": "Erro no registro",
     "haveAccount": "Já tem uma conta? Fazer login",
+    "noAccount": "Não tem conta? Registrar",
     "connecting": "Conectando...",
     "disconnecting": "Desconectando..."
   },
@@ -194,10 +195,47 @@
   },
   "receipts": {
     "title": "Meus Recibos",
+    "receipt": "recibo",
+    "receipts": "recibos",
     "noReceiptsFound": "Nenhum recibo encontrado",
+    "receiptsWillAppearHere": "Seus recibos gerados aparecerão aqui",
     "loadingReceipts": "Carregando recibos...",
     "downloadError": "Impossível baixar o PDF",
-    "loadError": "Impossível carregar os recibos"
+    "loadError": "Impossível carregar os recibos",
+    "connectionError": "Erro de conexão com o servidor. Verifique se o backend está rodando e acessível.",
+    "connectionProblem": "Problema de conexão",
+    "authRequired": "Por favor, reconecte-se para acessar os recibos.",
+    "authRequiredTitle": "Autenticação necessária",
+    "serviceUnavailable": "Serviço de recibos não disponível.",
+    "serviceUnavailableTitle": "Serviço indisponível",
+    "details": "Detalhes do recibo",
+    "number": "Número",
+    "amount": "Valor",
+    "date": "Data",
+    "status": "Status",
+    "downloads": "Downloads",
+    "downloadPdf": "Baixar PDF",
+    "howToCreate": "Como criar um recibo",
+    "createInstructions": "Para gerar um recibo:\n\n1. Vá para a tela \"Vendas\"\n2. Encontre uma venda existente\n3. Clique em \"🧾 Gerar Recibo v2.0\"\n4. Siga as confirmações\n\nOs recibos criados aparecerão automaticamente nesta lista.",
+    "understood": "Entendido",
+    "refreshList": "Atualizar lista",
+    "howToCreateReceipt": "Como criar um recibo?",
+    "customer": "Cliente",
+    "sale": "Venda",
+    "notes": "Notas",
+    "status": {
+      "generated": "Gerado",
+      "sent": "Enviado",
+      "delivered": "Entregue",
+      "failed": "Falhou"
+    },
+    "paymentMethods": {
+      "cash": "Dinheiro",
+      "card": "Cartão bancário",
+      "mobile": "Mobile Money",
+      "transfer": "Transferência bancária",
+      "credit": "Crédito"
+    }
   },
   "reports": {
     "title": "Relatórios",

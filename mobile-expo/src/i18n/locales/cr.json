@@ -47,6 +47,7 @@
     "registerSuccess": "Registru kriadu ku suksesu! Bu pode konekta agora.",
     "registerError": "Eru di registru",
     "haveAccount": "Ja ten konta? Konekta",
+    "noAccount": "Ka ten konta? Registra",
     "connecting": "Konesendu...",
     "disconnecting": "Saindu..."
   },
@@ -194,10 +195,47 @@
   },
   "receipts": {
     "title": "Meus Recibus",
+    "receipt": "recibu",
+    "receipts": "recibus",
     "noReceiptsFound": "Ka ten recibu",
+    "receiptsWillAppearHere": "Bu recibus kriadu ta aparese li",
     "loadingReceipts": "Karregandu recibus...",
     "downloadError": "Ka pode baixa PDF",
-    "loadError": "Ka pode karrega recibus"
+    "loadError": "Ka e posivel karrega recibus",
+    "connectionError": "Eru di koneksu ku servidor. Verifika se backend ta kore i aksivel.",
+    "connectionProblem": "Problema di koneksu",
+    "authRequired": "Por favor, konekta di nobu pa aksa recibus.",
+    "authRequiredTitle": "Autentikasa obrigatoria",
+    "serviceUnavailable": "Servisu di recibus ka disponivel.",
+    "serviceUnavailableTitle": "Servisu ka disponivel",
+    "details": "Detalhes di recibu",
+    "number": "Numero",
+    "amount": "Kantidadi",
+    "date": "Data",
+    "status": "Status",
+    "downloads": "Downloads",
+    "downloadPdf": "Baixa PDF",
+    "howToCreate": "Kuma kria recibu",
+    "createInstructions": "Pa gera recibu:\n\n1. Bai pa tela \"Vendas\"\n2. Atcha venda ku ja ten\n3. Klika na \"🧾 Gera Recibu v2.0\"\n4. Segue konfirmasus\n\nRecibus kriadu ta aparese automaticamente na lista li.",
+    "understood": "Intendu",
+    "refreshList": "Atualiza lista",
+    "howToCreateReceipt": "Kuma kria recibu?",
+    "customer": "Klienti",
+    "sale": "Venda",
+    "notes": "Notas",
+    "status": {
+      "generated": "Kriadu",
+      "sent": "Mandadu",
+      "delivered": "Entregue",
+      "failed": "Faladu"
+    },
+    "paymentMethods": {
+      "cash": "Dinhiro",
+      "card": "Kartu bankariu",
+      "mobile": "Mobile Money",
+      "transfer": "Transferensia bankaria",
+      "credit": "Kreditu"
+    }
   },
   "reports": {
     "title": "Relatorius",

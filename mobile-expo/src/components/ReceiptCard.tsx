@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Receipt } from '../services/receiptService';
 import { ReceiptPdfButton } from './ReceiptPdfButton';
 
@@ -27,9 +28,10 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   showDownloadButton = true,
   style,
 }) => {
+  const { t, i18n } = useTranslation();
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString(i18n.language === 'pt' ? 'pt-PT' : i18n.language === 'cr' ? 'pt-PT' : 'fr-FR', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -39,7 +41,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(i18n.language === 'pt' ? 'pt-PT' : i18n.language === 'cr' ? 'pt-PT' : 'fr-FR', {
       style: 'currency',
       currency: 'EUR',
     }).format(amount);
@@ -63,13 +65,13 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   const getStatusText = (status: string) => {
     switch (status) {
       case 'GENERATED':
-        return 'Généré';
+        return t('receipts.status.generated');
       case 'SENT':
-        return 'Envoyé';
+        return t('receipts.status.sent');
       case 'DELIVERED':
-        return 'Livré';
+        return t('receipts.status.delivered');
       case 'FAILED':
-        return 'Échec';
+        return t('receipts.status.failed');
       default:
         return status;
     }
@@ -78,15 +80,15 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   const getPaymentMethodText = (paymentMethod: string) => {
     switch (paymentMethod) {
       case 'CASH':
-        return 'Espèces';
+        return t('receipts.paymentMethods.cash');
       case 'CARD':
-        return 'Carte bancaire';
+        return t('receipts.paymentMethods.card');
       case 'MOBILE_MONEY':
-        return 'Mobile Money';
+        return t('receipts.paymentMethods.mobile');
       case 'BANK_TRANSFER':
-        return 'Virement bancaire';
+        return t('receipts.paymentMethods.transfer');
       case 'CREDIT':
-        return 'Crédit';
+        return t('receipts.paymentMethods.credit');
       default:
         return paymentMethod;
     }
@@ -128,27 +130,27 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
 
         {receipt.customerName && (
           <View style={styles.customerSection}>
-            <Text style={styles.customerLabel}>Client:</Text>
+            <Text style={styles.customerLabel}>{t('receipts.customer')}:</Text>
             <Text style={styles.customerName}>{receipt.customerName}</Text>
           </View>
         )}
 
         <View style={styles.detailsSection}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Vente:</Text>
+            <Text style={styles.detailLabel}>{t('receipts.sale')}:</Text>
             <Text style={styles.detailValue}>
               {receipt.saleNumber || 'N/A'}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date de vente:</Text>
+            <Text style={styles.detailLabel}>{t('receipts.saleDate')}:</Text>
             <Text style={styles.detailValue}>
-              {receipt.saleDate ? new Date(receipt.saleDate).toLocaleDateString('fr-FR') : 'N/A'}
+              {receipt.saleDate ? new Date(receipt.saleDate).toLocaleDateString(i18n.language === 'pt' ? 'pt-PT' : i18n.language === 'cr' ? 'pt-PT' : 'fr-FR') : 'N/A'}
             </Text>
           </View>
           {receipt.downloadCount > 0 && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Téléchargements:</Text>
+              <Text style={styles.detailLabel}>{t('receipts.downloads')}:</Text>
               <Text style={styles.detailValue}>{receipt.downloadCount}</Text>
             </View>
           )}
@@ -156,7 +158,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
 
         {receipt.notes && (
           <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Notes:</Text>
+            <Text style={styles.notesLabel}>{t('receipts.notes')}:</Text>
             <Text style={styles.notes} numberOfLines={2}>
               {receipt.notes}
             </Text>
