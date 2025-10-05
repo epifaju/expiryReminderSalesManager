@@ -143,6 +143,13 @@
     "selectProductAndQuantity": "Veuillez sélectionner un produit et une quantité valide",
     "insufficientStock": "Stock insuffisant. Stock disponible",
     "addAtLeastOneProduct": "Veuillez ajouter au moins un produit à la vente",
+    "history": "Historique",
+    "salesFound": "vente(s) trouvée(s)",
+    "createFirstSale": "Créez votre première vente en utilisant l'onglet \"Nouvelle Vente\"",
+    "status": {
+      "completed": "Terminée",
+      "inProgress": "En cours"
+    },
     "paymentMethods": {
       "cash": "Espèces",
       "card": "Carte",
@@ -236,5 +243,51 @@
     "lowStock": "Stock Faible",
     "expiringProducts": "Produits Expirants",
     "expiredProducts": "Produits Expirés"
+  },
+  "reports": {
+    "title": "Rapports et Statistiques",
+    "totalSales": "Ventes Totales",
+    "totalRevenue": "Chiffre d'Affaires",
+    "averageOrderValue": "Panier Moyen",
+    "activeProducts": "Produits Actifs",
+    "period": "Période",
+    "salesEvolution": "Évolution des Ventes (7 derniers jours)",
+    "paymentMethodDistribution": "Répartition par Méthode de Paiement",
+    "topSellingProducts": "Top Produits Vendus",
+    "profitabilityAnalysis": "Analyse de Rentabilité",
+    "revenue": "Chiffre d'affaires",
+    "costOfGoods": "Coût des marchandises",
+    "grossProfit": "Bénéfice brut",
+    "totalCost": "Coût Total",
+    "profitMargin": "Marge Bénéficiaire",
+    "margin": "Marge",
+    "noSalesData": "Aucune donnée de vente disponible",
+    "salesCount": "vente(s)",
+    "unitsSold": "unités vendues",
+    "exportData": "Exporter les Données",
+    "pdfReport": "Rapport PDF",
+    "completeReport": "Rapport complet",
+    "salesCSV": "Ventes CSV",
+    "salesData": "Données de ventes",
+    "productsCSV": "Produits CSV",
+    "productsList": "Liste des produits",
+    "paymentMethods": {
+      "cash": "Espèces",
+      "card": "Carte",
+      "transfer": "Virement"
+    },
+    "periods": {
+      "today": "Aujourd'hui",
+      "week": "Semaine",
+      "month": "Mois",
+      "year": "Année"
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "products": "Produits",
+      "profitability": "Rentabilité"
+    },
+    "topProductsCSV": "Top Produits CSV",
+    "topSales": "Meilleurs ventes"
   }
 }

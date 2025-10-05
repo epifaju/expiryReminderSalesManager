@@ -143,6 +143,13 @@
     "selectProductAndQuantity": "Por favor, skolje produtu i kantidadi valida",
     "insufficientStock": "Estoque ka ten. Estoque disponivel",
     "addAtLeastOneProduct": "Por favor, aumenta pelo menus un produtu na venda",
+    "history": "Istoriku",
+    "salesFound": "venda(s) atchadu(s)",
+    "createFirstSale": "Kria bu primeru venda uzanu aba \"Venda Nobu\"",
+    "status": {
+      "completed": "Kumpletu",
+      "inProgress": "Na korsu"
+    },
     "paymentMethods": {
       "cash": "Dinhiro",
       "card": "Kartu",
@@ -236,5 +243,51 @@
     "lowStock": "Estoque Baixu",
     "expiringProducts": "Produtus ka Kabando",
     "expiredProducts": "Produtus ja Kabadu"
+  },
+  "reports": {
+    "title": "Relatorius i Estatistikus",
+    "totalSales": "Vendas Totais",
+    "totalRevenue": "Rendimentu Total",
+    "averageOrderValue": "Valor Mediu di Pedidu",
+    "activeProducts": "Produtus Ativus",
+    "period": "Periodu",
+    "salesEvolution": "Evoluson di Vendas (ultimus 7 dias)",
+    "paymentMethodDistribution": "Distribuson pa Metodu di Pagamentu",
+    "topSellingProducts": "Produtus Mais Vendidus",
+    "profitabilityAnalysis": "Analizi di Rentabilidadi",
+    "revenue": "Rendimentu",
+    "costOfGoods": "Kustu di merkadorias",
+    "grossProfit": "Benefisiu brutu",
+    "totalCost": "Kustu Total",
+    "profitMargin": "Marjen di Benefisiu",
+    "margin": "Marjen",
+    "noSalesData": "Ka ten dadus di venda",
+    "salesCount": "venda(s)",
+    "unitsSold": "unidadis vendidus",
+    "exportData": "Esporta Dadus",
+    "pdfReport": "Relatoriu PDF",
+    "completeReport": "Relatoriu kompletu",
+    "salesCSV": "Vendas CSV",
+    "salesData": "Dadus di vendas",
+    "productsCSV": "Produtus CSV",
+    "productsList": "Lista di produtus",
+    "paymentMethods": {
+      "cash": "Dinhiro",
+      "card": "Kartu",
+      "transfer": "Transferensia"
+    },
+    "periods": {
+      "today": "Oji",
+      "week": "Simana",
+      "month": "Mês",
+      "year": "Anu"
+    },
+    "tabs": {
+      "overview": "Visu di Konjuntu",
+      "products": "Produtus",
+      "profitability": "Rentabilidadi"
+    },
+    "topProductsCSV": "Top Produtus CSV",
+    "topSales": "Meloris vendas"
   }
 }

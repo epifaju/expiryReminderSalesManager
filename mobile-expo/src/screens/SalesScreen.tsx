@@ -226,7 +226,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         <View style={styles.saleFooter}>
           <Text style={styles.paymentMethod}>{sale.paymentMethod}</Text>
           <Text style={[styles.status, { color: sale.status === 'COMPLETED' ? '#28a745' : '#ffc107' }]}>
-            {sale.status === 'COMPLETED' ? 'Terminée' : 'En cours'}
+            {sale.status === 'COMPLETED' ? t('sales.status.completed') : t('sales.status.inProgress')}
           </Text>
         </View>
         
@@ -330,7 +330,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
             onPress={() => setActiveTab('list')}
           >
             <Text style={[styles.tabText, activeTab === 'list' && styles.activeTabText]}>
-              Historique
+              {t('sales.history')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -341,7 +341,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
             }}
           >
             <Text style={[styles.tabText, activeTab === 'new' && styles.activeTabText]}>
-              Nouvelle Vente
+              {t('sales.newSale')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -368,7 +368,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           }
         >
           <Text style={styles.salesCount}>
-            {sales.length} vente(s) trouvée(s)
+            {sales.length} {t('sales.salesFound')}
           </Text>
 
           {sales.length > 0 ? (
@@ -377,9 +377,9 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Aucune vente trouvée</Text>
+              <Text style={styles.emptyStateText}>{t('sales.noSalesFound')}</Text>
               <Text style={styles.emptyStateSubtext}>
-                Créez votre première vente en utilisant l'onglet "Nouvelle Vente"
+                {t('sales.createFirstSale')}
               </Text>
             </View>
           )}

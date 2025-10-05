@@ -9,9 +9,11 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { ExportService } from '../services/exportService';
 import { Sale, SaleItem, PaymentMethod } from '../types/sales';
+import { formatPrice, formatDate } from '../utils/formatters';
 
 // Use the centralized API client instead of hardcoded URLs
 import apiClient from '../services/apiClient';
@@ -58,6 +60,7 @@ interface ReportStats {
 }
 
 const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
+  const { t, i18n } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<ReportStats>({
@@ -321,7 +324,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
   }, [selectedPeriod]);
 
   const formatCurrency = (amount: number) => {
-    return `${amount.toFixed(2)} €`;
+    return formatPrice(amount, i18n.language);
   };
 
   const formatPercentage = (value: number) => {
@@ -349,26 +352,26 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     <View>
       <View style={styles.statsGrid}>
         <StatCard
-          title="Ventes Totales"
+          title={t('reports.totalSales')}
           value={stats.totalSales.toString()}
-          subtitle={`Période: ${selectedPeriod}`}
+          subtitle={`${t('reports.period')}: ${selectedPeriod}`}
           color="#667eea"
           icon="🛒"
         />
         <StatCard
-          title="Chiffre d'Affaires"
+          title={t('reports.totalRevenue')}
           value={formatCurrency(stats.totalRevenue)}
           color="#28a745"
           icon="💰"
         />
         <StatCard
-          title="Panier Moyen"
+          title={t('reports.averageOrderValue')}
           value={formatCurrency(stats.averageOrderValue)}
           color="#764ba2"
           icon="📊"
         />
         <StatCard
-          title="Produits Actifs"
+          title={t('reports.activeProducts')}
           value={stats.totalProducts.toString()}
           color="#ff9800"
           icon="📦"
@@ -377,7 +380,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
 
       {/* Sales by Period Chart */}
       <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>Évolution des Ventes (7 derniers jours)</Text>
+        <Text style={styles.sectionTitle}>{t('reports.salesEvolution')}</Text>
         <View style={styles.chartContainer}>
           {stats.salesByPeriod.map((item, index) => (
             <View key={index} style={styles.chartBar}>
@@ -401,14 +404,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
 
       {/* Payment Methods */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Répartition par Méthode de Paiement</Text>
+        <Text style={styles.sectionTitle}>{t('reports.paymentMethodDistribution')}</Text>
         {stats.salesByPaymentMethod.map((item, index) => (
           <View key={index} style={styles.paymentMethodRow}>
             <View style={styles.paymentMethodInfo}>
               <Text style={styles.paymentMethodName}>
-                {item.method === 'CASH' ? 'Espèces' : item.method === 'CARD' ? 'Carte' : 'Virement'}
+                {item.method === 'CASH' ? t('reports.paymentMethods.cash') : item.method === 'CARD' ? t('reports.paymentMethods.card') : t('reports.paymentMethods.transfer')}
               </Text>
-              <Text style={styles.paymentMethodCount}>{item.count} vente(s)</Text>
+              <Text style={styles.paymentMethodCount}>{item.count} {t('reports.salesCount')}</Text>
             </View>
             <Text style={styles.paymentMethodAmount}>{formatCurrency(item.amount)}</Text>
           </View>
@@ -419,7 +422,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
 
   const ProductsTab = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Top Produits Vendus</Text>
+      <Text style={styles.sectionTitle}>{t('reports.topSellingProducts')}</Text>
       {stats.topSellingProducts.length > 0 ? (
         stats.topSellingProducts.map((product, index) => (
           <View key={index} style={styles.productRow}>
@@ -429,7 +432,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
             <View style={styles.productInfo}>
               <Text style={styles.productName}>{product.productName}</Text>
               <Text style={styles.productStats}>
-                {product.totalQuantity} unités vendues
+                {product.totalQuantity} {t('reports.unitsSold')}
               </Text>
             </View>
             <Text style={styles.productRevenue}>{formatCurrency(product.totalRevenue)}</Text>
@@ -437,7 +440,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
         ))
       ) : (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>Aucune donnée de vente disponible</Text>
+          <Text style={styles.emptyStateText}>{t('reports.noSalesData')}</Text>
         </View>
       )}
     </View>
@@ -447,25 +450,25 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     <View>
       <View style={styles.statsGrid}>
         <StatCard
-          title="Coût Total"
+          title={t('reports.totalCost')}
           value={formatCurrency(stats.profitAnalysis.totalCost)}
           color="#dc3545"
           icon="💸"
         />
         <StatCard
-          title="Revenus"
+          title={t('reports.revenue')}
           value={formatCurrency(stats.profitAnalysis.totalRevenue)}
           color="#28a745"
           icon="💰"
         />
         <StatCard
-          title="Bénéfice Brut"
+          title={t('reports.grossProfit')}
           value={formatCurrency(stats.profitAnalysis.grossProfit)}
           color="#667eea"
           icon="📈"
         />
         <StatCard
-          title="Marge Bénéficiaire"
+          title={t('reports.profitMargin')}
           value={formatPercentage(stats.profitAnalysis.profitMargin)}
           color="#764ba2"
           icon="📊"
@@ -473,22 +476,22 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Analyse de Rentabilité</Text>
+        <Text style={styles.sectionTitle}>{t('reports.profitabilityAnalysis')}</Text>
         <View style={styles.profitAnalysis}>
           <View style={styles.profitRow}>
-            <Text style={styles.profitLabel}>Chiffre d'affaires:</Text>
+            <Text style={styles.profitLabel}>{t('reports.revenue')}:</Text>
             <Text style={[styles.profitValue, { color: '#28a745' }]}>
               {formatCurrency(stats.profitAnalysis.totalRevenue)}
             </Text>
           </View>
           <View style={styles.profitRow}>
-            <Text style={styles.profitLabel}>Coût des marchandises:</Text>
+            <Text style={styles.profitLabel}>{t('reports.costOfGoods')}:</Text>
             <Text style={[styles.profitValue, { color: '#dc3545' }]}>
               -{formatCurrency(stats.profitAnalysis.totalCost)}
             </Text>
           </View>
           <View style={[styles.profitRow, styles.profitTotal]}>
-            <Text style={styles.profitTotalLabel}>Bénéfice brut:</Text>
+            <Text style={styles.profitTotalLabel}>{t('reports.grossProfit')}:</Text>
             <Text style={[styles.profitTotalValue, { 
               color: stats.profitAnalysis.grossProfit >= 0 ? '#28a745' : '#dc3545' 
             }]}>
@@ -497,7 +500,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
           </View>
           <View style={styles.marginIndicator}>
             <Text style={styles.marginText}>
-              Marge: {formatPercentage(stats.profitAnalysis.profitMargin)}
+              {t('reports.margin')}: {formatPercentage(stats.profitAnalysis.profitMargin)}
             </Text>
             <View style={styles.marginBar}>
               <View
@@ -521,7 +524,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📊 Rapports et Statistiques</Text>
+        <Text style={styles.headerTitle}>📊 {t('reports.title')}</Text>
         
         {/* Period Selector */}
         <View style={styles.periodSelector}>
@@ -538,9 +541,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
                 styles.periodButtonText,
                 selectedPeriod === period && styles.periodButtonTextActive
               ]}>
-                {period === 'today' ? 'Aujourd\'hui' :
-                 period === 'week' ? 'Semaine' :
-                 period === 'month' ? 'Mois' : 'Année'}
+                {period === 'today' ? t('reports.periods.today') :
+                 period === 'week' ? t('reports.periods.week') :
+                 period === 'month' ? t('reports.periods.month') : t('reports.periods.year')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -549,9 +552,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           {[
-            { key: 'overview', label: 'Vue d\'ensemble' },
-            { key: 'products', label: 'Produits' },
-            { key: 'profit', label: 'Rentabilité' },
+            { key: 'overview', label: t('reports.tabs.overview') },
+            { key: 'products', label: t('reports.tabs.products') },
+            { key: 'profit', label: t('reports.tabs.profitability') },
           ].map((tab) => (
             <TouchableOpacity
               key={tab.key}
@@ -578,15 +581,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
       >
         {/* Export Section */}
         <View style={styles.exportSection}>
-          <Text style={styles.exportTitle}>📤 Exporter les Données</Text>
+          <Text style={styles.exportTitle}>📤 {t('reports.exportData')}</Text>
           <View style={styles.exportButtons}>
             <TouchableOpacity
               style={[styles.exportButton, styles.pdfButton]}
               onPress={handleExportPDF}
             >
               <Text style={styles.exportButtonIcon}>📄</Text>
-              <Text style={styles.exportButtonText}>Rapport PDF</Text>
-              <Text style={styles.exportButtonSubtext}>Rapport complet</Text>
+              <Text style={styles.exportButtonText}>{t('reports.pdfReport')}</Text>
+              <Text style={styles.exportButtonSubtext}>{t('reports.completeReport')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -594,8 +597,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
               onPress={handleExportSalesCSV}
             >
               <Text style={styles.exportButtonIcon}>📊</Text>
-              <Text style={styles.exportButtonText}>Ventes CSV</Text>
-              <Text style={styles.exportButtonSubtext}>Données de ventes</Text>
+              <Text style={styles.exportButtonText}>{t('reports.salesCSV')}</Text>
+              <Text style={styles.exportButtonSubtext}>{t('reports.salesData')}</Text>
             </TouchableOpacity>
           </View>
           
@@ -605,8 +608,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
               onPress={handleExportProductsCSV}
             >
               <Text style={styles.exportButtonIcon}>📦</Text>
-              <Text style={styles.exportButtonText}>Produits CSV</Text>
-              <Text style={styles.exportButtonSubtext}>Liste des produits</Text>
+              <Text style={styles.exportButtonText}>{t('reports.productsCSV')}</Text>
+              <Text style={styles.exportButtonSubtext}>{t('reports.productsList')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -614,8 +617,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
               onPress={handleExportTopProductsCSV}
             >
               <Text style={styles.exportButtonIcon}>🏆</Text>
-              <Text style={styles.exportButtonText}>Top Produits CSV</Text>
-              <Text style={styles.exportButtonSubtext}>Meilleurs ventes</Text>
+              <Text style={styles.exportButtonText}>{t('reports.topProductsCSV')}</Text>
+              <Text style={styles.exportButtonSubtext}>{t('reports.topSales')}</Text>
             </TouchableOpacity>
           </View>
         </View>
