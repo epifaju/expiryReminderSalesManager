@@ -8,6 +8,8 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { formatPrice, formatDate } from '../utils/formatters';
 import productService from '../services/productService';
 
 interface Product {
@@ -33,6 +35,7 @@ interface ExpiringProductsScreenProps {
 }
 
 const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }) => {
+  const { t, i18n } = useTranslation();
   const [expiringProducts, setExpiringProducts] = useState<Product[]>([]);
   const [expiredProducts, setExpiredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,13 +45,13 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
 
   const validateAndCleanProduct = (product: any): Product | null => {
     if (!product || typeof product !== 'object') {
-      console.warn('Produit invalide reçu:', product);
+      console.warn(t('expiringProducts.invalidProduct'), product);
       return null;
     }
 
     // Validation des champs requis
     if (!product.id || !product.name) {
-      console.warn('Produit avec des champs manquants:', product);
+      console.warn(t('expiringProducts.missingFields'), product);
       return null;
     }
 
@@ -68,14 +71,14 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       // Vérifier que la date est valide
       const testDate = new Date(cleanExpiryDate);
       if (isNaN(testDate.getTime())) {
-        console.warn('Date d\'expiration invalide pour le produit:', product.name, cleanExpiryDate);
+        console.warn(t('expiringProducts.invalidExpiryDate'), product.name, cleanExpiryDate);
         cleanExpiryDate = null;
       }
     }
 
     return {
       id: product.id,
-      name: product.name || 'Nom non défini',
+      name: product.name || t('expiringProducts.undefinedName'),
       description: product.description || '',
       barcode: product.barcode || '',
       purchasePrice: Number(product.purchasePrice) || 0,
@@ -84,7 +87,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       minStockLevel: Number(product.minStockLevel) || 0,
       expiryDate: cleanExpiryDate,
       manufacturingDate: product.manufacturingDate || '',
-      category: product.category || 'Non catégorisé',
+      category: product.category || t('products.noCategory'),
       unit: product.unit || '',
       isActive: Boolean(product.isActive),
       isExpired: product.isExpired,
@@ -116,8 +119,8 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       setExpiringProducts(cleanExpiringProducts);
       setExpiredProducts(cleanExpiredProducts);
     } catch (error) {
-      console.error('Erreur lors du chargement des produits expirants:', error);
-      Alert.alert('Erreur', 'Impossible de charger les produits expirants');
+      console.error(t('expiringProducts.loadError'), error);
+      Alert.alert(t('errors.title'), t('expiringProducts.loadError'));
       setExpiringProducts([]);
       setExpiredProducts([]);
     } finally {
@@ -135,20 +138,20 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
     loadExpiringProducts();
   }, [warningDays]);
 
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return 'Non définie';
+  const formatDateLocal = (dateString: string): string => {
+    if (!dateString) return t('expiringProducts.notDefined');
     
     try {
       const date = new Date(dateString);
       // Vérifier si la date est valide
       if (isNaN(date.getTime())) {
-        console.warn('Date invalide reçue:', dateString);
-        return 'Date invalide';
+        console.warn(t('expiringProducts.invalidDate'), dateString);
+        return t('expiringProducts.invalidDate');
       }
-      return date.toLocaleDateString('fr-FR');
+      return formatDate(date, i18n.language);
     } catch (error) {
-      console.error('Erreur lors du formatage de la date:', dateString, error);
-      return 'Date invalide';
+      console.error(t('expiringProducts.dateFormatError'), dateString, error);
+      return t('expiringProducts.invalidDate');
     }
   };
 
@@ -162,7 +165,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       const expiry = new Date(expiryDate);
       // Vérifier si la date est valide
       if (isNaN(expiry.getTime())) {
-        console.warn('Date d\'expiration invalide:', expiryDate);
+        console.warn(t('expiringProducts.invalidExpiryDate'), expiryDate);
         return 0;
       }
       
@@ -172,7 +175,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays;
     } catch (error) {
-      console.error('Erreur lors du calcul des jours jusqu\'à expiration:', expiryDate, error);
+      console.error(t('expiringProducts.daysCalculationError'), expiryDate, error);
       return 0;
     }
   };
@@ -182,25 +185,25 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
     
     if (daysUntilExpiry < 0) {
       return {
-        text: `Expiré depuis ${Math.abs(daysUntilExpiry)} jour(s)`,
+        text: t('expiringProducts.expiredSince', { days: Math.abs(daysUntilExpiry) }),
         color: '#dc3545',
         icon: '🚫'
       };
     } else if (daysUntilExpiry === 0) {
       return {
-        text: 'Expire aujourd\'hui',
+        text: t('expiringProducts.expiresToday'),
         color: '#dc3545',
         icon: '⚠️'
       };
     } else if (daysUntilExpiry === 1) {
       return {
-        text: 'Expire demain',
+        text: t('expiringProducts.expiresTomorrow'),
         color: '#fd7e14',
         icon: '⚠️'
       };
     } else {
       return {
-        text: `Expire dans ${daysUntilExpiry} jour(s)`,
+        text: t('expiringProducts.expiresIn', { days: daysUntilExpiry }),
         color: '#ffc107',
         icon: '⏰'
       };
@@ -214,7 +217,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       <View style={styles.productCard}>
         <View style={styles.productHeader}>
           <Text style={styles.productName}>{product.name}</Text>
-          <Text style={styles.productCategory}>{product.category || 'Non catégorisé'}</Text>
+          <Text style={styles.productCategory}>{product.category || t('products.noCategory')}</Text>
         </View>
         
         <Text style={styles.productDescription}>{product.description}</Text>
@@ -224,17 +227,17 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
             {expiryStatus.icon} {expiryStatus.text}
           </Text>
           <Text style={styles.expiryDate}>
-            Date d'expiration: {formatDate(product.expiryDate)}
+            {t('expiringProducts.expiryDate')}: {formatDateLocal(product.expiryDate)}
           </Text>
         </View>
         
         <View style={styles.productDetails}>
-          <Text style={styles.productPrice}>Prix: {product.sellingPrice}€</Text>
-          <Text style={styles.productStock}>Stock: {product.stockQuantity}</Text>
+          <Text style={styles.productPrice}>{t('products.sellingPrice')}: {formatPrice(product.sellingPrice, i18n.language)}</Text>
+          <Text style={styles.productStock}>{t('products.stock')}: {product.stockQuantity}</Text>
         </View>
         
         {product.stockQuantity < product.minStockLevel && (
-          <Text style={styles.lowStockWarning}>⚠️ Stock faible</Text>
+          <Text style={styles.lowStockWarning}>⚠️ {t('products.lowStock')}</Text>
         )}
       </View>
     );
@@ -245,7 +248,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⏰ Produits Expirants</Text>
+        <Text style={styles.headerTitle}>⏰ {t('expiringProducts.title')}</Text>
       </View>
 
       {/* Tabs */}
@@ -255,7 +258,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
           onPress={() => setActiveTab('expiring')}
         >
           <Text style={[styles.tabText, activeTab === 'expiring' && styles.activeTabText]}>
-            Expirent bientôt ({expiringProducts.length})
+            {t('expiringProducts.expiringSoon')} ({expiringProducts.length})
           </Text>
         </TouchableOpacity>
         
@@ -264,7 +267,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
           onPress={() => setActiveTab('expired')}
         >
           <Text style={[styles.tabText, activeTab === 'expired' && styles.activeTabText]}>
-            Expirés ({expiredProducts.length})
+            {t('expiringProducts.expired')} ({expiredProducts.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -272,7 +275,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       {/* Warning Days Selector (only for expiring tab) */}
       {activeTab === 'expiring' && (
         <View style={styles.warningDaysContainer}>
-          <Text style={styles.warningDaysLabel}>Alerte dans les prochains:</Text>
+          <Text style={styles.warningDaysLabel}>{t('expiringProducts.alertInNext')}:</Text>
           <View style={styles.warningDaysButtons}>
             {[3, 7, 14, 30].map((days) => (
               <TouchableOpacity
@@ -287,7 +290,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
                   styles.warningDaysButtonText,
                   warningDays === days && styles.activeWarningDaysButtonText
                 ]}>
-                  {days}j
+                  {days}{t('expiringProducts.daysSuffix')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -302,7 +305,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
         }
       >
         <Text style={styles.productsCount}>
-          {currentProducts.length} produit(s) trouvé(s)
+          {currentProducts.length} {t('expiringProducts.productsFound')}
         </Text>
 
         {currentProducts.length > 0 ? (
@@ -313,14 +316,14 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
               {activeTab === 'expiring' 
-                ? 'Aucun produit n\'expire dans les prochains jours' 
-                : 'Aucun produit expiré'
+                ? t('expiringProducts.noExpiringProducts') 
+                : t('expiringProducts.noExpiredProducts')
               }
             </Text>
             <Text style={styles.emptyStateSubtext}>
               {activeTab === 'expiring' 
-                ? 'Vos produits sont tous en bon état !' 
-                : 'Parfait ! Aucun produit périmé à gérer.'
+                ? t('expiringProducts.allProductsGood') 
+                : t('expiringProducts.noExpiredToManage')
               }
             </Text>
           </View>

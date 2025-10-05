@@ -10,6 +10,8 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { formatPrice } from '../utils/formatters';
 
 interface Product {
   id: number;
@@ -39,6 +41,7 @@ interface NewSaleFormProps {
 }
 
 const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, preselectedProduct }) => {
+  const { t, i18n } = useTranslation();
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
@@ -59,7 +62,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
 
   const addItemToSale = () => {
     if (!selectedProduct || !quantity || parseInt(quantity) <= 0) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un produit et une quantité valide');
+      Alert.alert(t('errors.title'), t('sales.selectProductAndQuantity'));
       return;
     }
 
@@ -102,7 +105,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
 
   const handleCreateSale = () => {
     if (saleItems.length === 0) {
-      Alert.alert('Erreur', 'Veuillez ajouter au moins un produit à la vente');
+      Alert.alert(t('errors.title'), t('sales.addAtLeastOneProduct'));
       return;
     }
 
@@ -118,16 +121,13 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
     setPaymentMethod('CASH');
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${Number(amount).toFixed(2)} €`;
-  };
 
   const ProductSelector = () => (
     <Modal visible={showProductSelector} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Sélectionner un produit</Text>
+            <Text style={styles.modalTitle}>{t('sales.selectProduct')}</Text>
             <TouchableOpacity onPress={() => setShowProductSelector(false)}>
               <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
@@ -145,9 +145,9 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
               >
                 <View style={styles.productInfo}>
                   <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.productPrice}>{formatCurrency(product.sellingPrice)}</Text>
+                  <Text style={styles.productPrice}>{formatPrice(product.sellingPrice, i18n.language)}</Text>
                 </View>
-                <Text style={styles.productStock}>Stock: {product.stockQuantity}</Text>
+                <Text style={styles.productStock}>{t('products.stock')}: {product.stockQuantity}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -165,17 +165,17 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
         nestedScrollEnabled={true}
         contentInsetAdjustmentBehavior="automatic"
       >
-        <Text style={styles.sectionTitle}>Nouvelle Vente</Text>
+        <Text style={styles.sectionTitle}>{t('sales.newSale')}</Text>
         
         {/* Customer Info */}
         <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Nom du client (optionnel)</Text>
+          <Text style={styles.formLabel}>{t('sales.customerNameOptional')}</Text>
           <TextInput
             ref={customerNameRef}
             style={styles.input}
             value={customerName}
             onChangeText={setCustomerName}
-            placeholder="Nom du client"
+            placeholder={t('sales.customerName')}
             autoCorrect={false}
             autoCapitalize="words"
             blurOnSubmit={false}
@@ -187,7 +187,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
 
         {/* Payment Method */}
         <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Méthode de paiement</Text>
+          <Text style={styles.formLabel}>{t('sales.paymentMethod')}</Text>
           <View style={styles.paymentMethods}>
             {['CASH', 'CARD', 'TRANSFER'].map((method) => (
               <TouchableOpacity
@@ -202,7 +202,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
                   styles.paymentButtonText,
                   paymentMethod === method && styles.paymentButtonTextActive
                 ]}>
-                  {method === 'CASH' ? 'Espèces' : method === 'CARD' ? 'Carte' : 'Virement'}
+                  {method === 'CASH' ? t('sales.paymentMethods.cash') : method === 'CARD' ? t('sales.paymentMethods.card') : t('sales.paymentMethods.transfer')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -211,19 +211,19 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
 
         {/* Add Product */}
         <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Ajouter un produit</Text>
+          <Text style={styles.formLabel}>{t('sales.addProduct')}</Text>
           <TouchableOpacity
             style={styles.addProductButton}
             onPress={() => setShowProductSelector(true)}
           >
             <Text style={styles.addProductButtonText}>
-              {selectedProduct ? selectedProduct.name : 'Sélectionner un produit'}
+              {selectedProduct ? selectedProduct.name : t('sales.selectProduct')}
             </Text>
           </TouchableOpacity>
           
           {selectedProduct && (
             <View style={styles.quantitySection}>
-              <Text style={styles.formLabel}>Quantité</Text>
+              <Text style={styles.formLabel}>{t('sales.quantity')}</Text>
               <View style={styles.quantityContainer}>
                 <TextInput
                   ref={quantityRef}
@@ -239,7 +239,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
                   enablesReturnKeyAutomatically={false}
                 />
                 <TouchableOpacity style={styles.addItemButton} onPress={addItemToSale}>
-                  <Text style={styles.addItemButtonText}>Ajouter</Text>
+                  <Text style={styles.addItemButtonText}>{t('sales.add')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -255,7 +255,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
                 <View style={styles.saleItemInfo}>
                   <Text style={styles.saleItemName}>{item.productName}</Text>
                   <Text style={styles.saleItemDetails}>
-                    {item.quantity} x {formatCurrency(item.unitPrice)} = {formatCurrency(item.totalPrice)}
+                    {item.quantity} x {formatPrice(item.unitPrice, i18n.language)} = {formatPrice(item.totalPrice, i18n.language)}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -268,7 +268,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
             ))}
             
             <View style={styles.totalSection}>
-              <Text style={styles.totalText}>Total: {formatCurrency(getTotalAmount())}</Text>
+              <Text style={styles.totalText}>{t('sales.total')}: {formatPrice(getTotalAmount(), i18n.language)}</Text>
             </View>
           </View>
         )}
@@ -279,7 +279,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
           onPress={handleCreateSale}
           disabled={saleItems.length === 0}
         >
-          <Text style={styles.createSaleButtonText}>Créer la Vente</Text>
+          <Text style={styles.createSaleButtonText}>{t('sales.createSale')}</Text>
         </TouchableOpacity>
 
         <ProductSelector />
