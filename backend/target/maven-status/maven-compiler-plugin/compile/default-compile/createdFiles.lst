@@ -13,7 +13,6 @@ com\salesmanager\util\MessageHelper.class
 com\salesmanager\dto\ProductRequest.class
 com\salesmanager\SalesManagerApplication.class
 com\salesmanager\config\DataInitializer.class
-com\salesmanager\service\ReceiptPdfService$1.class
 com\salesmanager\dto\SaleItemResponse.class
 com\salesmanager\service\ProductService.class
 com\salesmanager\config\JacksonConfig$2.class

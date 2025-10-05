@@ -166,6 +166,20 @@
       "card": "Cartão",
       "mobile": "Mobile Money",
       "transfer": "Transferência"
+    },
+    "receipt": {
+      "confirmTitle": "✅ Recibo - Versão 2.0",
+      "confirmMessage": "Gerar um recibo para a venda {{saleId}}?\n\nModificações consideradas!",
+      "cancel": "Cancelar",
+      "generate": "Gerar",
+      "successTitle": "✅ Recibo criado com sucesso",
+      "successMessage": "O recibo {{receiptNumber}} foi gerado para a venda {{saleId}}.\n\nValor: {{amount}}€\nData: {{date}}",
+      "viewReceipts": "Ver recibos",
+      "errorTitle": "❌ Erro de criação",
+      "errorMessage": "{{errorMessage}}\n\nID da Venda: {{saleId}}\nVerifique se a venda existe e se você tem as permissões necessárias.",
+      "productFound": "Produto encontrado",
+      "productNotFound": "Produto não encontrado",
+      "productNotFoundMessage": "Nenhum produto com o código de barras: {{barcode}}"
     }
   },
   "expiringProducts": {

@@ -84,9 +84,9 @@ export const ReceiptsScreen: React.FC = () => {
     Alert.alert(
       t('receipts.details'),
       `${t('receipts.number')}: ${receipt.receiptNumber}\n` +
-      `${t('receipts.amount')}: ${receiptService.formatCurrency(receipt.finalAmount)}\n` +
-      `${t('receipts.date')}: ${receiptService.formatDate(receipt.createdAt)}\n` +
-      `${t('receipts.status')}: ${receiptService.getStatusText(receipt.status)}\n` +
+      `${t('receipts.amount')}: ${receiptService.formatCurrency(receipt.finalAmount, i18n.language === 'pt' ? 'pt-PT' : 'fr-FR')}\n` +
+      `${t('receipts.date')}: ${receiptService.formatDate(receipt.createdAt, i18n.language === 'pt' ? 'pt-PT' : 'fr-FR')}\n` +
+      `${t('receipts.status')}: ${receiptService.getStatusText(receipt.status, t)}\n` +
       `${t('receipts.downloads')}: ${receipt.downloadCount}`,
       [
         { text: t('common.close'), style: 'cancel' },

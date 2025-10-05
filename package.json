@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.1",
+    "@types/react": "~18.2.79",
     "axios": "^1.11.0",
     "expo": "~51.0.28",
     "expo-file-system": "~17.0.1",
+    "expo-localization": "^17.0.7",
     "expo-print": "~13.0.1",
     "expo-secure-store": "~13.0.2",
     "expo-sharing": "~12.0.1",
@@ -22,7 +24,6 @@
     "react-native": "0.74.5",
     "react-native-calendars": "^1.1313.0",
     "react-native-web": "~0.19.10",
-    "typescript": "~5.3.3",
-    "@types/react": "~18.2.79"
+    "typescript": "~5.3.3"
   }
 }

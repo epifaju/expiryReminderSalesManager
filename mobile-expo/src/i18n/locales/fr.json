@@ -166,6 +166,20 @@
       "card": "Carte",
       "mobile": "Mobile Money",
       "transfer": "Virement"
+    },
+    "receipt": {
+      "confirmTitle": "✅ Reçu - Version 2.0",
+      "confirmMessage": "Générer un reçu pour la vente {{saleId}}?\n\nModifications prises en compte !",
+      "cancel": "Annuler",
+      "generate": "Générer",
+      "successTitle": "✅ Reçu créé avec succès",
+      "successMessage": "Le reçu {{receiptNumber}} a été généré pour la vente {{saleId}}.\n\nMontant: {{amount}}€\nDate: {{date}}",
+      "viewReceipts": "Voir les reçus",
+      "errorTitle": "❌ Erreur de création",
+      "errorMessage": "{{errorMessage}}\n\nVente ID: {{saleId}}\nVérifiez que la vente existe et que vous avez les permissions nécessaires.",
+      "productFound": "Produit trouvé",
+      "productNotFound": "Produit non trouvé",
+      "productNotFoundMessage": "Aucun produit avec le code-barres: {{barcode}}"
     }
   },
   "expiringProducts": {

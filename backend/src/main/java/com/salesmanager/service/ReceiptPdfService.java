@@ -14,8 +14,10 @@ import com.salesmanager.entity.Receipt;
 import com.salesmanager.entity.Sale;
 import com.salesmanager.entity.SaleItem;
 import com.salesmanager.entity.User;
+import com.salesmanager.util.MessageHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -32,10 +34,13 @@ public class ReceiptPdfService {
 
     private static final Logger logger = LoggerFactory.getLogger(ReceiptPdfService.class);
 
+    @Autowired
+    private MessageHelper messageHelper;
+
     // private static final String FONT_PATH = "/fonts/"; // Vous pouvez ajouter des
     // polices personnalisées
 
-    public byte[] generatePdf(Receipt receipt) throws IOException {
+    public byte[] generatePdf(Receipt receipt, Locale locale) throws IOException {
         logger.info("Génération du PDF pour le reçu: {}", receipt.getReceiptNumber());
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -51,22 +56,22 @@ public class ReceiptPdfService {
             PdfFont smallFont = PdfFontFactory.createFont(com.itextpdf.io.font.constants.StandardFonts.HELVETICA);
 
             // En-tête du document
-            addHeader(document, receipt, titleFont, headerFont);
+            addHeader(document, receipt, titleFont, headerFont, locale);
 
             // Informations de la transaction
-            addTransactionInfo(document, receipt, headerFont, normalFont);
+            addTransactionInfo(document, receipt, headerFont, normalFont, locale);
 
             // Détails des articles
-            addItemsTable(document, receipt, headerFont, normalFont, smallFont);
+            addItemsTable(document, receipt, headerFont, normalFont, smallFont, locale);
 
             // Totaux
-            addTotals(document, receipt, headerFont, normalFont);
+            addTotals(document, receipt, headerFont, normalFont, locale);
 
             // Informations de paiement
-            addPaymentInfo(document, receipt, headerFont, normalFont);
+            addPaymentInfo(document, receipt, headerFont, normalFont, locale);
 
             // Pied de page
-            addFooter(document, receipt, smallFont);
+            addFooter(document, receipt, smallFont, locale);
 
             document.close();
 
@@ -85,9 +90,10 @@ public class ReceiptPdfService {
         }
     }
 
-    private void addHeader(Document document, Receipt receipt, PdfFont titleFont, PdfFont headerFont) {
+    private void addHeader(Document document, Receipt receipt, PdfFont titleFont, PdfFont headerFont, Locale locale) {
         // Titre principal
-        Paragraph title = new Paragraph("REÇU DE VENTE")
+        String titleText = messageHelper.getMessage("receipt.title", locale);
+        Paragraph title = new Paragraph(titleText)
                 .setFont(titleFont)
                 .setFontSize(24)
                 .setTextAlignment(TextAlignment.CENTER)
@@ -118,7 +124,8 @@ public class ReceiptPdfService {
 
         // Contact de l'entreprise
         if (receipt.getCompanyPhone() != null && !receipt.getCompanyPhone().isEmpty()) {
-            Paragraph companyPhone = new Paragraph("Tél: " + receipt.getCompanyPhone())
+            String phoneLabel = messageHelper.getMessage("receipt.phone", locale);
+            Paragraph companyPhone = new Paragraph(phoneLabel + " " + receipt.getCompanyPhone())
                     .setFont(headerFont)
                     .setFontSize(10)
                     .setTextAlignment(TextAlignment.CENTER)
@@ -127,7 +134,8 @@ public class ReceiptPdfService {
         }
 
         if (receipt.getCompanyEmail() != null && !receipt.getCompanyEmail().isEmpty()) {
-            Paragraph companyEmail = new Paragraph("Email: " + receipt.getCompanyEmail())
+            String emailLabel = messageHelper.getMessage("receipt.email", locale);
+            Paragraph companyEmail = new Paragraph(emailLabel + " " + receipt.getCompanyEmail())
                     .setFont(headerFont)
                     .setFontSize(10)
                     .setTextAlignment(TextAlignment.CENTER)
@@ -140,23 +148,27 @@ public class ReceiptPdfService {
                 .setMarginBottom(15));
     }
 
-    private void addTransactionInfo(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont) {
+    private void addTransactionInfo(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont,
+            Locale locale) {
         Table infoTable = new Table(2).setWidth(UnitValue.createPercentValue(100));
 
         // Numéro de reçu
-        infoTable.addCell(createCell("N° Reçu:", headerFont, true));
+        String receiptNumberLabel = messageHelper.getMessage("receipt.receiptNumber", locale);
+        infoTable.addCell(createCell(receiptNumberLabel, headerFont, true));
         infoTable.addCell(createCell(receipt.getReceiptNumber(), normalFont, false));
 
         // Date de vente
         String saleDate = receipt.getSale().getSaleDate().format(
                 DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm"));
-        infoTable.addCell(createCell("Date:", headerFont, true));
+        String dateLabel = messageHelper.getMessage("receipt.date", locale);
+        infoTable.addCell(createCell(dateLabel, headerFont, true));
         infoTable.addCell(createCell(saleDate, normalFont, false));
 
         // Vendeur
         if (receipt.getUser() != null) {
             String sellerName = receipt.getUser().getFirstName() + " " + receipt.getUser().getLastName();
-            infoTable.addCell(createCell("Vendu par:", headerFont, true));
+            String soldByLabel = messageHelper.getMessage("receipt.soldBy", locale);
+            infoTable.addCell(createCell(soldByLabel, headerFont, true));
             infoTable.addCell(createCell(sellerName, normalFont, false));
         }
 
@@ -165,9 +177,10 @@ public class ReceiptPdfService {
     }
 
     private void addItemsTable(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont,
-            PdfFont smallFont) {
+            PdfFont smallFont, Locale locale) {
         // En-tête du tableau des articles
-        Paragraph itemsTitle = new Paragraph("DÉTAIL DES ARTICLES")
+        String itemsTitleText = messageHelper.getMessage("receipt.itemsTitle", locale);
+        Paragraph itemsTitle = new Paragraph(itemsTitleText)
                 .setFont(headerFont)
                 .setFontSize(12)
                 .setMarginBottom(10)
@@ -177,76 +190,91 @@ public class ReceiptPdfService {
         Table itemsTable = new Table(5).setWidth(UnitValue.createPercentValue(100));
 
         // En-têtes des colonnes
-        itemsTable.addHeaderCell(createHeaderCell("Article", headerFont));
-        itemsTable.addHeaderCell(createHeaderCell("Qté", headerFont));
-        itemsTable.addHeaderCell(createHeaderCell("Prix Unitaire", headerFont));
-        itemsTable.addHeaderCell(createHeaderCell("Remise", headerFont));
-        itemsTable.addHeaderCell(createHeaderCell("Total", headerFont));
+        String itemLabel = messageHelper.getMessage("receipt.item", locale);
+        String quantityLabel = messageHelper.getMessage("receipt.quantity", locale);
+        String unitPriceLabel = messageHelper.getMessage("receipt.unitPrice", locale);
+        String discountLabel = messageHelper.getMessage("receipt.discount", locale);
+        String totalLabel = messageHelper.getMessage("receipt.total", locale);
+
+        itemsTable.addHeaderCell(createHeaderCell(itemLabel, headerFont));
+        itemsTable.addHeaderCell(createHeaderCell(quantityLabel, headerFont));
+        itemsTable.addHeaderCell(createHeaderCell(unitPriceLabel, headerFont));
+        itemsTable.addHeaderCell(createHeaderCell(discountLabel, headerFont));
+        itemsTable.addHeaderCell(createHeaderCell(totalLabel, headerFont));
 
         // Articles
         List<SaleItem> items = receipt.getSale().getSaleItems();
         for (SaleItem item : items) {
             itemsTable.addCell(createCell(item.getProduct().getName(), normalFont, false));
             itemsTable.addCell(createCell(String.valueOf(item.getQuantity()), normalFont, false));
-            itemsTable.addCell(createCell(formatCurrency(item.getUnitPrice()), normalFont, false));
-            itemsTable.addCell(createCell(formatCurrency(item.getDiscount()), normalFont, false));
-            itemsTable.addCell(createCell(formatCurrency(item.getSubtotal()), normalFont, false));
+            itemsTable.addCell(createCell(formatCurrency(item.getUnitPrice(), locale), normalFont, false));
+            itemsTable.addCell(createCell(formatCurrency(item.getDiscount(), locale), normalFont, false));
+            itemsTable.addCell(createCell(formatCurrency(item.getSubtotal(), locale), normalFont, false));
         }
 
         document.add(itemsTable);
         document.add(new Paragraph().setMarginBottom(15));
     }
 
-    private void addTotals(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont) {
+    private void addTotals(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont, Locale locale) {
         Table totalsTable = new Table(2).setWidth(UnitValue.createPercentValue(60))
                 .setHorizontalAlignment(HorizontalAlignment.RIGHT);
 
         // Sous-total
-        totalsTable.addCell(createCell("Sous-total:", headerFont, true));
-        totalsTable.addCell(createCell(formatCurrency(receipt.getTotalAmount()), normalFont, false));
+        String subtotalLabel = messageHelper.getMessage("receipt.subtotal", locale);
+        totalsTable.addCell(createCell(subtotalLabel, headerFont, true));
+        totalsTable.addCell(createCell(formatCurrency(receipt.getTotalAmount(), locale), normalFont, false));
 
         // Remise
         if (receipt.getDiscountAmount() != null && receipt.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
-            totalsTable.addCell(createCell("Remise:", headerFont, true));
-            totalsTable.addCell(createCell("-" + formatCurrency(receipt.getDiscountAmount()), normalFont, false));
+            String discountLabel = messageHelper.getMessage("receipt.discountAmount", locale);
+            totalsTable.addCell(createCell(discountLabel, headerFont, true));
+            totalsTable
+                    .addCell(createCell("-" + formatCurrency(receipt.getDiscountAmount(), locale), normalFont, false));
         }
 
         // TVA
         if (receipt.getTaxAmount() != null && receipt.getTaxAmount().compareTo(BigDecimal.ZERO) > 0) {
-            totalsTable.addCell(createCell("TVA:", headerFont, true));
-            totalsTable.addCell(createCell(formatCurrency(receipt.getTaxAmount()), normalFont, false));
+            String taxLabel = messageHelper.getMessage("receipt.tax", locale);
+            totalsTable.addCell(createCell(taxLabel, headerFont, true));
+            totalsTable.addCell(createCell(formatCurrency(receipt.getTaxAmount(), locale), normalFont, false));
         }
 
         // Total final
-        totalsTable.addCell(createCell("TOTAL TTC:", headerFont, true)
+        String totalAmountLabel = messageHelper.getMessage("receipt.totalAmount", locale);
+        totalsTable.addCell(createCell(totalAmountLabel, headerFont, true)
                 .setBackgroundColor(ColorConstants.LIGHT_GRAY));
-        totalsTable.addCell(createCell(formatCurrency(receipt.getFinalAmount()), headerFont, false)
+        totalsTable.addCell(createCell(formatCurrency(receipt.getFinalAmount(), locale), headerFont, false)
                 .setBackgroundColor(ColorConstants.LIGHT_GRAY));
 
         document.add(totalsTable);
         document.add(new Paragraph().setMarginBottom(15));
     }
 
-    private void addPaymentInfo(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont) {
+    private void addPaymentInfo(Document document, Receipt receipt, PdfFont headerFont, PdfFont normalFont,
+            Locale locale) {
         if (receipt.getPaymentMethod() != null) {
             Table paymentTable = new Table(2).setWidth(UnitValue.createPercentValue(100));
 
-            paymentTable.addCell(createCell("Mode de paiement:", headerFont, true));
-            paymentTable.addCell(createCell(getPaymentMethodText(receipt.getPaymentMethod()), normalFont, false));
+            String paymentMethodLabel = messageHelper.getMessage("receipt.paymentMethod", locale);
+            paymentTable.addCell(createCell(paymentMethodLabel, headerFont, true));
+            paymentTable
+                    .addCell(createCell(getPaymentMethodText(receipt.getPaymentMethod(), locale), normalFont, false));
 
             document.add(paymentTable);
             document.add(new Paragraph().setMarginBottom(15));
         }
     }
 
-    private void addFooter(Document document, Receipt receipt, PdfFont smallFont) {
+    private void addFooter(Document document, Receipt receipt, PdfFont smallFont, Locale locale) {
         // Séparateur
         document.add(new LineSeparator(new com.itextpdf.kernel.pdf.canvas.draw.SolidLine())
                 .setMarginTop(20).setMarginBottom(15));
 
         // Notes
         if (receipt.getNotes() != null && !receipt.getNotes().isEmpty()) {
-            Paragraph notes = new Paragraph("Notes: " + receipt.getNotes())
+            String notesLabel = messageHelper.getMessage("receipt.notes", locale);
+            Paragraph notes = new Paragraph(notesLabel + " " + receipt.getNotes())
                     .setFont(smallFont)
                     .setFontSize(9)
                     .setMarginBottom(10);
@@ -254,9 +282,8 @@ public class ReceiptPdfService {
         }
 
         // Mentions légales
-        Paragraph legalText = new Paragraph(
-                "Ce reçu fait foi de votre achat. Conservez-le précieusement.\n" +
-                        "Pour toute réclamation, présentez ce reçu dans les 30 jours.")
+        String legalTextContent = messageHelper.getMessage("receipt.legalText", locale);
+        Paragraph legalText = new Paragraph(legalTextContent)
                 .setFont(smallFont)
                 .setFontSize(8)
                 .setTextAlignment(TextAlignment.CENTER)
@@ -267,7 +294,8 @@ public class ReceiptPdfService {
 
         // QR Code (si disponible)
         if (receipt.getQrCodeData() != null && !receipt.getQrCodeData().isEmpty()) {
-            Paragraph qrInfo = new Paragraph("QR Code de vérification disponible")
+            String qrCodeText = messageHelper.getMessage("receipt.qrCode", locale);
+            Paragraph qrInfo = new Paragraph(qrCodeText)
                     .setFont(smallFont)
                     .setFontSize(8)
                     .setTextAlignment(TextAlignment.CENTER)
@@ -276,7 +304,8 @@ public class ReceiptPdfService {
         }
 
         // Timestamp de génération
-        String generatedAt = "Généré le " + receipt.getCreatedAt().format(
+        String generatedAtLabel = messageHelper.getMessage("receipt.generatedAt", locale);
+        String generatedAt = generatedAtLabel + " " + receipt.getCreatedAt().format(
                 DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss"));
         Paragraph timestamp = new Paragraph(generatedAt)
                 .setFont(smallFont)
@@ -302,29 +331,19 @@ public class ReceiptPdfService {
                 .setTextAlignment(TextAlignment.CENTER);
     }
 
-    private String formatCurrency(BigDecimal amount) {
+    private String formatCurrency(BigDecimal amount, Locale locale) {
         if (amount == null) {
             return "0,00 €";
         }
 
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(Locale.FRANCE);
+        // Utiliser la locale appropriée pour le formatage des devises
+        Locale currencyLocale = locale.getLanguage().equals("pt") ? new Locale("pt", "PT") : Locale.FRANCE;
+        NumberFormat formatter = NumberFormat.getCurrencyInstance(currencyLocale);
         return formatter.format(amount);
     }
 
-    private String getPaymentMethodText(Sale.PaymentMethod paymentMethod) {
-        switch (paymentMethod) {
-            case CASH:
-                return "Espèces";
-            case CARD:
-                return "Carte bancaire";
-            case MOBILE_MONEY:
-                return "Mobile Money";
-            case BANK_TRANSFER:
-                return "Virement bancaire";
-            case CREDIT:
-                return "Crédit";
-            default:
-                return paymentMethod.toString();
-        }
+    private String getPaymentMethodText(Sale.PaymentMethod paymentMethod, Locale locale) {
+        String key = "payment." + paymentMethod.name().toLowerCase();
+        return messageHelper.getMessage(key, locale);
     }
 }

@@ -237,12 +237,12 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
             onPress={() => {
               console.log('🔍 Bouton reçu cliqué pour la vente:', sale.id);
               Alert.alert(
-                '✅ Reçu - Version 2.0',
-                `Générer un reçu pour la vente ${sale.id}?\n\nModifications prises en compte !`,
+                t('sales.receipt.confirmTitle'),
+                t('sales.receipt.confirmMessage', { saleId: sale.id }),
                 [
-                  { text: 'Annuler', style: 'cancel' },
+                  { text: t('sales.receipt.cancel'), style: 'cancel' },
                   { 
-                    text: 'Générer', 
+                    text: t('sales.receipt.generate'), 
                     onPress: async () => {
                       try {
                         console.log('🔄 Début de la création du reçu pour la vente:', sale.id);
@@ -262,17 +262,22 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                         }
                         
                         Alert.alert(
-                          '✅ Reçu créé avec succès',
-                          `Le reçu ${receipt.receiptNumber} a été généré pour la vente ${sale.id}.\n\nMontant: ${receipt.finalAmount}€\nDate: ${new Date(receipt.createdAt).toLocaleDateString('fr-FR')}`,
+                          t('sales.receipt.successTitle'),
+                          t('sales.receipt.successMessage', { 
+                            receiptNumber: receipt.receiptNumber,
+                            saleId: sale.id,
+                            amount: receipt.finalAmount,
+                            date: new Date(receipt.createdAt).toLocaleDateString(i18n.language === 'pt' ? 'pt-PT' : 'fr-FR')
+                          }),
                           [
                             {
-                              text: 'Voir les reçus',
+                              text: t('sales.receipt.viewReceipts'),
                               onPress: () => {
                                 // Optionnel: naviguer vers l'écran des reçus
                                 console.log('Aller à l\'écran des reçus');
                               },
                             },
-                            { text: 'OK' },
+                            { text: t('common.ok') },
                           ]
                         );
                       } catch (error: any) {
@@ -289,9 +294,12 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                         }
                         
                         Alert.alert(
-                          '❌ Erreur de création',
-                          `${errorMessage}\n\nVente ID: ${sale.id}\nVérifiez que la vente existe et que vous avez les permissions nécessaires.`,
-                          [{ text: 'OK' }]
+                          t('sales.receipt.errorTitle'),
+                          t('sales.receipt.errorMessage', { 
+                            errorMessage: errorMessage,
+                            saleId: sale.id 
+                          }),
+                          [{ text: t('common.ok') }]
                         );
                       }
                     }
@@ -401,14 +409,14 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           if (foundProduct) {
             setScannedProduct(foundProduct);
             Alert.alert(
-              'Produit trouvé',
+              t('sales.receipt.productFound'),
               `${foundProduct.name} - ${foundProduct.sellingPrice}€`,
-              [{ text: 'OK' }]
+              [{ text: t('common.ok') }]
             );
           } else {
             Alert.alert(
-              'Produit non trouvé',
-              `Aucun produit avec le code-barres: ${scannedBarcode}`
+              t('sales.receipt.productNotFound'),
+              t('sales.receipt.productNotFoundMessage', { barcode: scannedBarcode })
             );
           }
         }}

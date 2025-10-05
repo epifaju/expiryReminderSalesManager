@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import i18n from '../i18n';
 
 export interface Receipt {
   id: number;
@@ -239,6 +240,7 @@ class ReceiptService {
         responseType: 'blob',
         headers: {
           'Accept': 'application/pdf',
+          'Accept-Language': i18n.language,
         },
       });
       return response.data;
@@ -256,6 +258,7 @@ class ReceiptService {
         responseType: 'blob',
         headers: {
           'Accept': 'application/pdf',
+          'Accept-Language': i18n.language,
         },
       });
       return response.data;
@@ -290,8 +293,8 @@ class ReceiptService {
   /**
    * Formate un montant en devise
    */
-  formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('fr-FR', {
+  formatCurrency(amount: number, locale: string = 'fr-FR'): string {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'EUR',
     }).format(amount);
@@ -300,9 +303,9 @@ class ReceiptService {
   /**
    * Formate une date
    */
-  formatDate(dateString: string): string {
+  formatDate(dateString: string, locale: string = 'fr-FR'): string {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -314,7 +317,17 @@ class ReceiptService {
   /**
    * Obtient le texte du mode de paiement
    */
-  getPaymentMethodText(paymentMethod: string): string {
+  getPaymentMethodText(paymentMethod: string, t?: (key: string) => string): string {
+    if (t) {
+      const methodKey = paymentMethod.toLowerCase();
+      const translationKey = `receipts.paymentMethods.${methodKey}`;
+      const translated = t(translationKey);
+      if (translated !== translationKey) {
+        return translated;
+      }
+    }
+    
+    // Fallback en français si pas de traduction
     const methods: { [key: string]: string } = {
       CASH: 'Espèces',
       CARD: 'Carte bancaire',
@@ -328,7 +341,17 @@ class ReceiptService {
   /**
    * Obtient le texte du statut
    */
-  getStatusText(status: string): string {
+  getStatusText(status: string, t?: (key: string) => string): string {
+    if (t) {
+      const statusKey = status.toLowerCase();
+      const translationKey = `receipts.status.${statusKey}`;
+      const translated = t(translationKey);
+      if (translated !== translationKey) {
+        return translated;
+      }
+    }
+    
+    // Fallback en français si pas de traduction
     const statuses: { [key: string]: string } = {
       GENERATED: 'Généré',
       SENT: 'Envoyé',

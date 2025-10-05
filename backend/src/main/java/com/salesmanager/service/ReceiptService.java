@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @Transactional
@@ -62,7 +63,7 @@ public class ReceiptService {
         receipt.setCustomerPhone(sale.getCustomerPhone());
         receipt.setCustomerEmail(sale.getCustomerEmail());
         receipt.setNotes(sale.getNotes());
-        
+
         // S'assurer que les dates sont définies
         receipt.setCreatedAt(LocalDateTime.now());
         receipt.setUpdatedAt(LocalDateTime.now());
@@ -75,8 +76,9 @@ public class ReceiptService {
 
         // Sauvegarder le reçu d'abord pour générer le numéro de reçu
         Receipt savedReceipt = receiptRepository.save(receipt);
-        
-        // Générer le QR code après la sauvegarde (quand le receiptNumber est disponible)
+
+        // Générer le QR code après la sauvegarde (quand le receiptNumber est
+        // disponible)
         savedReceipt.setQrCodeData(generateQrCodeData(savedReceipt));
         savedReceipt = receiptRepository.save(savedReceipt);
 
@@ -120,7 +122,7 @@ public class ReceiptService {
     /**
      * Génère le PDF d'un reçu
      */
-    public byte[] generateReceiptPdf(Long receiptId, User user) {
+    public byte[] generateReceiptPdf(Long receiptId, User user, Locale locale) {
         logger.info("Génération du PDF pour le reçu ID: {} par l'utilisateur: {}", receiptId, user.getUsername());
 
         Receipt receipt = getReceiptById(receiptId, user);
@@ -135,8 +137,8 @@ public class ReceiptService {
             receipt.incrementDownloadCount();
             receiptRepository.save(receipt);
 
-            // Générer le PDF
-            byte[] pdfBytes = receiptPdfService.generatePdf(receipt);
+            // Générer le PDF avec la langue appropriée
+            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale);
 
             logger.info("PDF généré avec succès pour le reçu: {}. Taille: {} bytes",
                     receipt.getReceiptNumber(), pdfBytes.length);
@@ -152,7 +154,7 @@ public class ReceiptService {
     /**
      * Génère le PDF d'un reçu par son numéro
      */
-    public byte[] generateReceiptPdfByNumber(String receiptNumber, User user) {
+    public byte[] generateReceiptPdfByNumber(String receiptNumber, User user, Locale locale) {
         logger.info("Génération du PDF pour le reçu numéro: {} par l'utilisateur: {}", receiptNumber,
                 user.getUsername());
 
@@ -168,8 +170,8 @@ public class ReceiptService {
             receipt.incrementDownloadCount();
             receiptRepository.save(receipt);
 
-            // Générer le PDF
-            byte[] pdfBytes = receiptPdfService.generatePdf(receipt);
+            // Générer le PDF avec la langue appropriée
+            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale);
 
             logger.info("PDF généré avec succès pour le reçu: {}. Taille: {} bytes",
                     receipt.getReceiptNumber(), pdfBytes.length);
@@ -235,7 +237,7 @@ public class ReceiptService {
     @Transactional(readOnly = true)
     public List<Receipt> getRecentlyDownloadedReceipts(User user) {
         logger.info("Récupération des reçus récemment téléchargés pour l'utilisateur: {}", user.getUsername());
-        
+
         LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
         return receiptRepository.findRecentlyDownloadedByUser(user, twentyFourHoursAgo);
     }
@@ -245,9 +247,9 @@ public class ReceiptService {
      */
     private String generateQrCodeData(Receipt receipt) {
         // Format simple pour le QR code
-        return String.format("RECEIPT:%s:%s:%s", 
-            receipt.getReceiptNumber(), 
-            receipt.getFinalAmount().toString(),
-            receipt.getCreatedAt().toString());
+        return String.format("RECEIPT:%s:%s:%s",
+                receipt.getReceiptNumber(),
+                receipt.getFinalAmount().toString(),
+                receipt.getCreatedAt().toString());
     }
 }

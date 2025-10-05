@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -149,13 +150,18 @@ public class ReceiptController {
     @GetMapping("/{receiptId}/pdf")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<?> downloadReceiptPdf(@PathVariable Long receiptId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestHeader(value = "Accept-Language", defaultValue = "fr") String acceptLanguage) {
         try {
             logger.info("Demande de téléchargement PDF du reçu ID: {} par l'utilisateur: {}",
                     receiptId, userDetails.getUsername());
 
             User user = userDetails.getUser();
-            byte[] pdfBytes = receiptService.generateReceiptPdf(receiptId, user);
+
+            // Déterminer la locale à partir de l'en-tête Accept-Language
+            Locale locale = parseLocale(acceptLanguage);
+
+            byte[] pdfBytes = receiptService.generateReceiptPdf(receiptId, user, locale);
 
             // Récupérer les informations du reçu pour le nom de fichier
             Receipt receipt = receiptService.getReceiptById(receiptId, user);
@@ -187,13 +193,18 @@ public class ReceiptController {
     @GetMapping("/number/{receiptNumber}/pdf")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<?> downloadReceiptPdfByNumber(@PathVariable String receiptNumber,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestHeader(value = "Accept-Language", defaultValue = "fr") String acceptLanguage) {
         try {
             logger.info("Demande de téléchargement PDF du reçu numéro: {} par l'utilisateur: {}",
                     receiptNumber, userDetails.getUsername());
 
             User user = userDetails.getUser();
-            byte[] pdfBytes = receiptService.generateReceiptPdfByNumber(receiptNumber, user);
+
+            // Déterminer la locale à partir de l'en-tête Accept-Language
+            Locale locale = parseLocale(acceptLanguage);
+
+            byte[] pdfBytes = receiptService.generateReceiptPdfByNumber(receiptNumber, user, locale);
 
             String fileName = "receipt_" + receiptNumber + ".pdf";
 
@@ -269,6 +280,28 @@ public class ReceiptController {
             logger.error("Erreur inattendue lors de la suppression du reçu", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erreur interne du serveur"));
+        }
+    }
+
+    /**
+     * Parse l'en-tête Accept-Language pour déterminer la locale
+     */
+    private Locale parseLocale(String acceptLanguage) {
+        if (acceptLanguage == null || acceptLanguage.isEmpty()) {
+            return Locale.FRENCH;
+        }
+
+        // Prendre la première langue de la liste
+        String[] languages = acceptLanguage.split(",");
+        String primaryLanguage = languages[0].trim().split(";")[0].trim();
+
+        if (primaryLanguage.startsWith("pt")) {
+            return new Locale("pt");
+        } else if (primaryLanguage.startsWith("fr")) {
+            return Locale.FRENCH;
+        } else {
+            // Par défaut, utiliser le français
+            return Locale.FRENCH;
         }
     }
 }
