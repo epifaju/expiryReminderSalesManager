@@ -1,4 +1,5 @@
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\config\DataInitializer.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\config\GzipConfiguration.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\config\I18nConfig.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\config\JacksonConfig.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\config\ReceiptTableConfig.java
@@ -7,6 +8,7 @@ C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesma
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\controller\ProductController.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\controller\ReceiptController.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\controller\SaleController.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\controller\SyncController.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\ApiResponse.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\JwtResponse.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\LoginRequest.java
@@ -18,12 +20,20 @@ C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesma
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SaleRequest.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SaleResponse.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SignupRequest.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SyncBatchRequest.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SyncBatchResponse.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SyncDeltaRequest.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\dto\SyncDeltaResponse.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\Product.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\Receipt.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\Role.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\Sale.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\SaleItem.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\StockMovement.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\SyncConflict.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\SyncLog.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\entity\User.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\exception\ConflictException.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\exception\GlobalExceptionHandler.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\exception\ProductNotFoundException.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\exception\ResourceAlreadyExistsException.java
@@ -32,6 +42,9 @@ C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesma
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\ReceiptRepository.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\SaleItemRepository.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\SaleRepository.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\StockMovementRepository.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\SyncConflictRepository.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\SyncLogRepository.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\repository\UserRepository.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\SalesManagerApplication.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\security\JwtAuthenticationEntryPoint.java
@@ -44,4 +57,5 @@ C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesma
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\service\ReceiptPdfService.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\service\ReceiptService.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\service\SaleService.java
+C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\service\SyncService.java
 C:\Users\epifa\cursor-workspace\expiryReminder\backend\src\main\java\com\salesmanager\util\MessageHelper.java

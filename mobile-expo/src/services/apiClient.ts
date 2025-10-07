@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import CompressionService from './compression/CompressionService';
 
 // Dynamic API URL based on platform with fallback options
 const getApiUrls = () => {
