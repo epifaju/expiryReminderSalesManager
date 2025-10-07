@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../components/LanguageSelector';
+import UserProfileScreen from './UserProfileScreen';
+import ChangePasswordScreen from './ChangePasswordScreen';
+import NotificationsScreen from './NotificationsScreen';
+import DarkModeScreen from './DarkModeScreen';
+import HelpScreen from './HelpScreen';
+import ContactSupportScreen from './ContactSupportScreen';
+import AboutScreen from './AboutScreen';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -9,6 +16,13 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
   const { t } = useTranslation();
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showDarkMode, setShowDarkMode] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showContactSupport, setShowContactSupport] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   
   const handleLogout = () => {
     Alert.alert(
@@ -28,6 +42,41 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
     );
   };
 
+  // Si on affiche le profil utilisateur, afficher cet écran
+  if (showUserProfile) {
+    return <UserProfileScreen onBack={() => setShowUserProfile(false)} />;
+  }
+
+  // Si on affiche le changement de mot de passe, afficher cet écran
+  if (showChangePassword) {
+    return <ChangePasswordScreen onBack={() => setShowChangePassword(false)} />;
+  }
+
+  // Si on affiche les notifications, afficher cet écran
+  if (showNotifications) {
+    return <NotificationsScreen onBack={() => setShowNotifications(false)} />;
+  }
+
+  // Si on affiche le mode sombre, afficher cet écran
+  if (showDarkMode) {
+    return <DarkModeScreen onBack={() => setShowDarkMode(false)} />;
+  }
+
+  // Si on affiche l'aide, afficher cet écran
+  if (showHelp) {
+    return <HelpScreen onBack={() => setShowHelp(false)} />;
+  }
+
+  // Si on affiche le contact support, afficher cet écran
+  if (showContactSupport) {
+    return <ContactSupportScreen onBack={() => setShowContactSupport(false)} />;
+  }
+
+  // Si on affiche À propos, afficher cet écran
+  if (showAbout) {
+    return <AboutScreen onBack={() => setShowAbout(false)} />;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -38,13 +87,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowUserProfile(true)}
+          >
             <Text style={styles.settingIcon}>👤</Text>
             <Text style={styles.settingText}>{t('settings.userProfile')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowChangePassword(true)}
+          >
             <Text style={styles.settingIcon}>🔒</Text>
             <Text style={styles.settingText}>{t('settings.changePassword')}</Text>
             <Text style={styles.settingArrow}>›</Text>
@@ -54,13 +109,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.application')}</Text>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowNotifications(true)}
+          >
             <Text style={styles.settingIcon}>🔔</Text>
             <Text style={styles.settingText}>{t('settings.notifications')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowDarkMode(true)}
+          >
             <Text style={styles.settingIcon}>🌙</Text>
             <Text style={styles.settingText}>{t('settings.darkMode')}</Text>
             <Text style={styles.settingArrow}>›</Text>
@@ -88,19 +149,28 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.support')}</Text>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowHelp(true)}
+          >
             <Text style={styles.settingIcon}>❓</Text>
             <Text style={styles.settingText}>{t('settings.help')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowContactSupport(true)}
+          >
             <Text style={styles.settingIcon}>📧</Text>
             <Text style={styles.settingText}>{t('settings.contactSupport')}</Text>
             <Text style={styles.settingArrow}>›</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => setShowAbout(true)}
+          >
             <Text style={styles.settingIcon}>ℹ️</Text>
             <Text style={styles.settingText}>{t('settings.about')}</Text>
             <Text style={styles.settingArrow}>›</Text>

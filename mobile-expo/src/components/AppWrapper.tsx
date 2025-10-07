@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { initI18n } from '../i18n';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import AppContent from './AppContent';
 
 export default function AppWrapper() {
@@ -34,5 +35,9 @@ export default function AppWrapper() {
     );
   }
 
-  return <AppContent />;
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
 }

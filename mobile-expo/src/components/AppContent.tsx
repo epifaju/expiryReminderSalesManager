@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
 import DashboardScreen from '../screens/DashboardScreen';
 import ProductsScreen from '../screens/ProductsScreen';
 import SalesScreen from '../screens/SalesScreen';
@@ -24,6 +25,7 @@ type TabType = 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'ex
 
 export default function AppContent() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -148,11 +150,11 @@ export default function AppContent() {
   // Affichage de chargement pendant l'initialisation
   if (!appReady) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>🛍️ {t('app.name')}</Text>
-        <Text style={styles.subtitle}>{t('app.initialization')}</Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>🛍️ {t('app.name')}</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>{t('app.initialization')}</Text>
         <View style={{ alignItems: 'center', padding: 20 }}>
-          <Text style={{ fontSize: 16, color: '#666' }}>{t('app.loading')}</Text>
+          <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>{t('app.loading')}</Text>
         </View>
       </View>
     );
@@ -169,29 +171,39 @@ export default function AppContent() {
     }
 
     return (
-      <View style={styles.container}>
-        <StatusBar style="auto" />
-        <Text style={styles.title}>{t('app.name')}</Text>
-        <Text style={styles.subtitle}>{t('auth.login')}</Text>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={theme.isDark ? "light" : "dark"} />
+        <Text style={[styles.title, { color: theme.colors.text }]}>{t('app.name')}</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>{t('auth.login')}</Text>
         
         <TextInput
-          style={styles.input}
+          style={[styles.input, { 
+            backgroundColor: theme.colors.card, 
+            borderColor: theme.colors.border,
+            color: theme.colors.text 
+          }]}
           placeholder={t('auth.username')}
+          placeholderTextColor={theme.colors.textSecondary}
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
         />
         
         <TextInput
-          style={styles.input}
+          style={[styles.input, { 
+            backgroundColor: theme.colors.card, 
+            borderColor: theme.colors.border,
+            color: theme.colors.text 
+          }]}
           placeholder={t('auth.password')}
+          placeholderTextColor={theme.colors.textSecondary}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
         
         <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]} 
+          style={[styles.button, { backgroundColor: theme.colors.primary }, isLoading && styles.buttonDisabled]} 
           onPress={login}
           disabled={isLoading}
           activeOpacity={0.7}
@@ -206,15 +218,15 @@ export default function AppContent() {
           onPress={() => setShowRegister(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.linkText}>{t('auth.noAccount')}</Text>
+          <Text style={[styles.linkText, { color: theme.colors.primary }]}>{t('auth.noAccount')}</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar style="auto" />
+    <View style={[styles.mainContainer, { backgroundColor: theme.colors.background }]}>
+      <StatusBar style={theme.isDark ? "light" : "dark"} />
       
       {/* Main Content */}
       <View style={styles.content}>
@@ -222,14 +234,21 @@ export default function AppContent() {
       </View>
       
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { 
+        backgroundColor: theme.colors.card, 
+        borderTopColor: theme.colors.border 
+      }]}>
         <TouchableOpacity
-          style={[styles.navItem, activeTab === 'dashboard' && styles.activeNavItem]}
+          style={[styles.navItem, activeTab === 'dashboard' && { backgroundColor: theme.isDark ? '#3a3a3a' : '#f0f8ff' }]}
           onPress={() => setActiveTab('dashboard')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'dashboard' && styles.activeNavIcon]}>🏠</Text>
-          <Text style={[styles.navText, activeTab === 'dashboard' && styles.activeNavText]}>{t('navigation.home')}</Text>
+          <Text style={[
+            styles.navText, 
+            { color: theme.colors.textSecondary },
+            activeTab === 'dashboard' && { color: theme.colors.primary, fontWeight: 'bold' }
+          ]}>{t('navigation.home')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
