@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,19 @@ import apiClient from '../services/apiClient';
 import { receiptService } from '../services/receiptService';
 import NewSaleForm from '../components/NewSaleForm';
 import BarcodeScanner from '../components/BarcodeScanner';
+import UnknownBarcodeModal, { QuickProductFormData } from '../components/bluetooth/UnknownBarcodeModal';
 import { formatPrice, formatDate } from '../utils/formatters';
+import { registerSalesScanCallbacks } from '../hooks/scannerSaleBridge';
+import { resolveSaleProductFromLocal } from '../utils/scannerSaleBridge';
+import { createQuickProduct } from '../services/scanner/scannerProductRepository';
+import authService from '../services/authService';
+import { LocalProduct } from '../types/localProduct';
+import {
+  playScanSuccessFeedback,
+  playScanNotFoundFeedback,
+} from '../bluetooth/scannerFeedback';
+import { pendingProductSyncService } from '../services/scanner/PendingProductSyncService';
+import NetworkService from '../services/network/NetworkService';
 // import CreateReceiptButton from '../components/CreateReceiptButton';
 
 interface Product {
@@ -69,6 +81,67 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
   const [showScanner, setShowScanner] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [unknownBarcode, setUnknownBarcode] = useState('');
+  const [showUnknownModal, setShowUnknownModal] = useState(false);
+  const [pendingCartProduct, setPendingCartProduct] = useState<Product | null>(null);
+  const productsRef = useRef(products);
+  productsRef.current = products;
+
+  const tryAddScannedProductToCart = useCallback(
+    (local: LocalProduct, catalog: Product[]): boolean => {
+      const saleProduct = resolveSaleProductFromLocal(local, catalog);
+      if (saleProduct?.id) {
+        setActiveTab('new');
+        setPendingCartProduct(saleProduct);
+        return true;
+      }
+      return false;
+    },
+    []
+  );
+
+  const openUnknownProductModal = useCallback((barcode: string) => {
+    console.log('[SalesScreen] Produit inconnu, ouverture modal:', barcode);
+    setActiveTab('new');
+    setUnknownBarcode(barcode);
+    setShowUnknownModal(true);
+  }, []);
+
+  const handleScannedProductNotFound = useCallback(
+    (barcode: string) => {
+      void playScanNotFoundFeedback();
+      const fromCatalog = productsRef.current.find((p) => p.barcode?.trim() === barcode.trim());
+      if (fromCatalog) {
+        setActiveTab('new');
+        setPendingCartProduct(fromCatalog);
+        Alert.alert(t('common.success'), t('bluetooth.scan_success'));
+        return;
+      }
+      openUnknownProductModal(barcode);
+    },
+    [openUnknownProductModal, t]
+  );
+
+  const handleScannedProductFound = useCallback(
+    (local: LocalProduct) => {
+      void playScanSuccessFeedback();
+      if (tryAddScannedProductToCart(local, productsRef.current)) {
+        Alert.alert(t('common.success'), t('bluetooth.scan_success'));
+      } else {
+        Alert.alert(t('bluetooth.local_pending_title'), t('bluetooth.local_pending_message'));
+      }
+    },
+    [t, tryAddScannedProductToCart]
+  );
+
+  useEffect(() => {
+    registerSalesScanCallbacks({
+      onProductFound: handleScannedProductFound,
+      onProductNotFound: handleScannedProductNotFound,
+      onScanError: (message) => Alert.alert(t('common.error'), message),
+    });
+    return () => registerSalesScanCallbacks(null);
+  }, [handleScannedProductFound, handleScannedProductNotFound, t]);
 
   const loadSales = async () => {
     try {
@@ -125,11 +198,11 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     }
   };
 
-  const loadProducts = async () => {
+  const loadProducts = async (): Promise<Product[]> => {
     try {
       const response = await apiClient.get('/products');
 
-      let productsData = [];
+      let productsData: Product[] = [];
       if (response.data && response.data.content) {
         productsData = response.data.content;
       } else if (Array.isArray(response.data)) {
@@ -137,9 +210,43 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       }
 
       setProducts(productsData);
+      return productsData;
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
       setProducts([]);
+      return [];
+    }
+  };
+
+  const handleQuickCreateProduct = async (data: QuickProductFormData) => {
+    const user = authService.getUser();
+    if (!user) {
+      Alert.alert(t('common.error'), t('errors.authFailed'));
+      return;
+    }
+
+    try {
+      const local = await createQuickProduct(data, String(user.id));
+      setShowUnknownModal(false);
+      setUnknownBarcode('');
+
+      const catalog = await loadProducts();
+      const addedToCart = tryAddScannedProductToCart(local, catalog);
+
+      if (NetworkService.isOnline()) {
+        const syncResult = await pendingProductSyncService.syncAll();
+        if (syncResult.synced > 0) {
+          await loadProducts();
+        }
+      }
+
+      Alert.alert(
+        t('common.success'),
+        addedToCart ? t('bluetooth.scan_success') : t('bluetooth.product_created')
+      );
+    } catch (error) {
+      console.error('Erreur création produit rapide:', error);
+      Alert.alert(t('common.error'), t('errors.unknownError'));
     }
   };
 
@@ -397,8 +504,20 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
           products={products} 
           onCreateSale={handleCreateSale} 
           preselectedProduct={scannedProduct}
+          pendingCartProduct={pendingCartProduct}
+          onPendingCartProductHandled={() => setPendingCartProduct(null)}
         />
       )}
+
+      <UnknownBarcodeModal
+        visible={showUnknownModal}
+        barcode={unknownBarcode}
+        onCreateProduct={handleQuickCreateProduct}
+        onDismiss={() => {
+          setShowUnknownModal(false);
+          setUnknownBarcode('');
+        }}
+      />
 
       {/* Scanner de code-barres pour les ventes */}
       <BarcodeScanner
@@ -414,10 +533,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
               [{ text: t('common.ok') }]
             );
           } else {
-            Alert.alert(
-              t('sales.receipt.productNotFound'),
-              t('sales.receipt.productNotFoundMessage', { barcode: scannedBarcode })
-            );
+            openUnknownProductModal(scannedBarcode);
           }
         }}
         onClose={() => setShowScanner(false)}

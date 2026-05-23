@@ -12,6 +12,7 @@ import {
   ProductSearchCriteria,
   SyncStatus
 } from '../types/models';
+import { LocalProduct } from '../types/localProduct';
 
 /**
  * Classe DAO pour gérer les opérations sur les produits
@@ -112,6 +113,51 @@ export class ProductDAO {
     } catch (error) {
       console.error('[ProductDAO] Erreur lors de la recherche du produit:', error);
       throw new Error(`Échec de la recherche du produit: ${error}`);
+    }
+  }
+
+  /**
+   * Recherche un produit actif par code-barres (scanner Bluetooth / offline).
+   * @param barcode - Code-barres scanné
+   * @param userId - Filtre optionnel par utilisateur propriétaire
+   */
+  public async findByBarcode(barcode: string, userId?: string): Promise<LocalProduct | null> {
+    try {
+      const normalized = barcode.trim();
+      if (!normalized) {
+        return null;
+      }
+
+      console.log('[ProductDAO] Recherche par code-barres:', normalized);
+
+      let query = 'SELECT * FROM products WHERE barcode = ? AND is_deleted = 0';
+      const params: string[] = [normalized];
+
+      if (userId) {
+        query += ' AND user_id = ?';
+        params.push(userId);
+      }
+
+      query += ' LIMIT 1';
+
+      const result = await this.db.executeSql(query, params);
+
+      if (result.rows.length === 0) {
+        console.log('[ProductDAO] Aucun produit pour le code-barres:', normalized);
+        return null;
+      }
+
+      const row = result.rows.item(0);
+      const product: LocalProduct = {
+        ...this.mapRowToProduct(row),
+        barcode: row.barcode ?? null,
+      };
+
+      console.log('[ProductDAO] Produit trouvé par code-barres:', product.name);
+      return product;
+    } catch (error) {
+      console.error('[ProductDAO] Erreur findByBarcode:', error);
+      throw new Error(`Échec de la recherche par code-barres: ${error}`);
     }
   }
 

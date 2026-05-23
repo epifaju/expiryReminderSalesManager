@@ -20,6 +20,8 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ExpiringProductsScreen from '../screens/ExpiringProductsScreen';
 import ReceiptsScreen from '../screens/ReceiptsScreen';
 import authService from '../services/authService';
+import ScannerStatusBar from './bluetooth/ScannerStatusBar';
+import SalesScannerHost from './bluetooth/SalesScannerHost';
 
 type TabType = 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'expiring' | 'settings';
 
@@ -232,6 +234,9 @@ export default function AppContent() {
       <View style={styles.content}>
         {renderScreen()}
       </View>
+
+      <SalesScannerHost enabled={isLoggedIn && activeTab === 'sales'} />
+      <ScannerStatusBar compact />
       
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { 

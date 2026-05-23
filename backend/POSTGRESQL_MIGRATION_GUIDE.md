@@ -54,6 +54,12 @@
 - **Mot de passe** : `password` (configurable via `DB_PASSWORD`)
 - **Port** : `5432` (port par défaut PostgreSQL)
 
+### Migrations Flyway
+
+Les scripts SQL sont dans `src/main/resources/db/migration/` (V3–V5, dont la colonne `barcode`).
+
+Voir **[FLYWAY.md](FLYWAY.md)** pour exécuter `mvn flyway:migrate -Ppostgresql` ou lancer l’API avec le profil `postgresql` (Flyway s’exécute au démarrage).
+
 ### Démarrage de l'Application
 
 1. **Avec PostgreSQL local** :

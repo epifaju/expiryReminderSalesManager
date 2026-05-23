@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { initI18n } from '../i18n';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import AppContent from './AppContent';
+import scannerConnectivityCoordinator from '../services/scanner/ScannerConnectivityCoordinator';
 
 export default function AppWrapper() {
   const [i18nReady, setI18nReady] = useState(false);
@@ -22,6 +23,13 @@ export default function AppWrapper() {
     };
 
     initializeI18n();
+  }, []);
+
+  useEffect(() => {
+    void scannerConnectivityCoordinator.start();
+    return () => {
+      void scannerConnectivityCoordinator.stop();
+    };
   }, []);
 
   if (!i18nReady) {

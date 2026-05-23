@@ -11,6 +11,9 @@ CREATE INDEX IF NOT EXISTS idx_products_sync_updated
     ON products(updated_at DESC, is_active) 
     WHERE is_active = true;
 
+-- Colonne barcode requise avant l'index (renforcée en V5)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(50);
+
 -- Index pour recherche rapide par barcode (unique déjà existant mais optimisé)
 CREATE INDEX IF NOT EXISTS idx_products_barcode 
     ON products(barcode) 

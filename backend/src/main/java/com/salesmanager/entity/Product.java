@@ -25,7 +25,7 @@ public class Product {
     @Size(max = 500)
     private String description;
     
-    @Column(name = "barcode", unique = true)
+    @Column(name = "barcode", unique = true, length = 50)
     private String barcode;
     
     @NotNull

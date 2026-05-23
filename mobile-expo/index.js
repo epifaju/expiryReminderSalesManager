@@ -1,3 +1,7 @@
+import { installCryptoPolyfill } from "./src/utils/cryptoPolyfill";
+
+installCryptoPolyfill();
+
 import { registerRootComponent } from "expo";
 
 import App from "./App";

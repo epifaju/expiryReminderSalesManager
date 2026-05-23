@@ -38,9 +38,18 @@ interface NewSaleFormProps {
     saleItems: SaleItem[];
   }) => void;
   preselectedProduct?: Product | null;
+  /** Produit à ajouter au panier (scanner Bluetooth) — quantité 1 */
+  pendingCartProduct?: Product | null;
+  onPendingCartProductHandled?: () => void;
 }
 
-const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, preselectedProduct }) => {
+const NewSaleForm: React.FC<NewSaleFormProps> = ({
+  products,
+  onCreateSale,
+  preselectedProduct,
+  pendingCartProduct,
+  onPendingCartProductHandled,
+}) => {
   const { t, i18n } = useTranslation();
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [customerName, setCustomerName] = useState('');
@@ -60,35 +69,53 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({ products, onCreateSale, prese
     }
   }, [preselectedProduct]);
 
+  const appendProductToCart = (product: Product, qty: number) => {
+    if (qty <= 0) {
+      return;
+    }
+    if (qty > product.stockQuantity) {
+      Alert.alert(t('common.error'), `${t('sales.insufficientStock')} ${product.stockQuantity}`);
+      return;
+    }
+
+    setSaleItems((prev) => {
+      const existingItemIndex = prev.findIndex((item) => item.productId === product.id);
+      if (existingItemIndex >= 0) {
+        const updatedItems = [...prev];
+        updatedItems[existingItemIndex].quantity += qty;
+        updatedItems[existingItemIndex].totalPrice =
+          updatedItems[existingItemIndex].quantity * product.sellingPrice;
+        return updatedItems;
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          productName: product.name,
+          quantity: qty,
+          unitPrice: product.sellingPrice,
+          totalPrice: qty * product.sellingPrice,
+        },
+      ];
+    });
+  };
+
+  useEffect(() => {
+    if (!pendingCartProduct) {
+      return;
+    }
+    appendProductToCart(pendingCartProduct, 1);
+    onPendingCartProductHandled?.();
+  }, [pendingCartProduct]);
+
   const addItemToSale = () => {
     if (!selectedProduct || !quantity || parseInt(quantity) <= 0) {
       Alert.alert(t('errors.title'), t('sales.selectProductAndQuantity'));
       return;
     }
 
-    const qty = parseInt(quantity);
-    if (qty > selectedProduct.stockQuantity) {
-      Alert.alert('Erreur', `Stock insuffisant. Stock disponible: ${selectedProduct.stockQuantity}`);
-      return;
-    }
-
-    const existingItemIndex = saleItems.findIndex(item => item.productId === selectedProduct.id);
-    
-    if (existingItemIndex >= 0) {
-      const updatedItems = [...saleItems];
-      updatedItems[existingItemIndex].quantity += qty;
-      updatedItems[existingItemIndex].totalPrice = updatedItems[existingItemIndex].quantity * selectedProduct.sellingPrice;
-      setSaleItems(updatedItems);
-    } else {
-      const newItem: SaleItem = {
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        quantity: qty,
-        unitPrice: selectedProduct.sellingPrice,
-        totalPrice: qty * selectedProduct.sellingPrice
-      };
-      setSaleItems([...saleItems, newItem]);
-    }
+    const qty = parseInt(quantity, 10);
+    appendProductToCart(selectedProduct, qty);
 
     setSelectedProduct(null);
     setQuantity('1');

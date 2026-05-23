@@ -9,6 +9,7 @@ import DarkModeScreen from './DarkModeScreen';
 import HelpScreen from './HelpScreen';
 import ContactSupportScreen from './ContactSupportScreen';
 import AboutScreen from './AboutScreen';
+import BluetoothSettingsScreen from './BluetoothSettingsScreen';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -23,6 +24,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [showContactSupport, setShowContactSupport] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showBluetoothSettings, setShowBluetoothSettings] = useState(false);
   
   const handleLogout = () => {
     Alert.alert(
@@ -77,6 +79,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
     return <AboutScreen onBack={() => setShowAbout(false)} />;
   }
 
+  if (showBluetoothSettings) {
+    return <BluetoothSettingsScreen onBack={() => setShowBluetoothSettings(false)} />;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -128,6 +134,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
           </TouchableOpacity>
           
           <LanguageSelector />
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => setShowBluetoothSettings(true)}
+          >
+            <Text style={styles.settingIcon}>📶</Text>
+            <Text style={styles.settingText}>{t('bluetooth.settings_title')}</Text>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
