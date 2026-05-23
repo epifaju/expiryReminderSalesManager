@@ -169,3 +169,4 @@ COMMENT ON INDEX idx_sync_logs_errors IS 'Index partiel pour logs avec erreurs u
 -- WHERE schemaname = 'public' 
 -- ORDER BY tablename, indexname;
 
+

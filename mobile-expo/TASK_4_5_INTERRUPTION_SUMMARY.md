@@ -621,3 +621,4 @@ console.log("Latence moyenne:", simStats.averageLatency);
 ```
 
 **Le système est maintenant validé et prêt pour la production !** 🎉
+

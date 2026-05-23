@@ -270,3 +270,4 @@ console.log("   2. Implémenter l'écran de synchronisation (Tâche 2.4)");
 console.log("   3. Intégrer avec l'API backend");
 console.log("   4. Tests d'intégration complets");
 
+

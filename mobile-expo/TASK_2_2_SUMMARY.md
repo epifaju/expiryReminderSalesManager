@@ -275,3 +275,4 @@ Le SyncQueueService est **production-ready** avec :
 
 **Prêt pour la Tâche 2.3 : UI - Badge état réseau** 🚀
 
+

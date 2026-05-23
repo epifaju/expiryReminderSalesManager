@@ -39,7 +39,8 @@
         {
           "cameraPermission": "Permet à l'application d'utiliser la caméra pour scanner les codes-barres."
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }

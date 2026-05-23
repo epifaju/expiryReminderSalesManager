@@ -517,3 +517,4 @@ const response = await apiClient.post("/api/endpoint", data, {
 ```
 
 **La compression est maintenant active et optimise toutes les synchronisations !** 🎉
+

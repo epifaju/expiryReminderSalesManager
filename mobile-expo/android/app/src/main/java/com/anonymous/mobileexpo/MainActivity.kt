@@ -16,6 +16,14 @@ class MainActivity : ReactActivity() {
     // coloring the background, status bar, and navigation bar.
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
+    // Metro: IP du PC (voir MainApplication.metroHost) — commit() avant super.onCreate()
+    if (BuildConfig.DEBUG) {
+      getSharedPreferences("ReactNativeDevSettings", MODE_PRIVATE)
+        .edit()
+        .putString("debug_http_host", "192.168.1.16:8081")
+        .putString("debug_server_host", "192.168.1.16:8081")
+        .commit()
+    }
     super.onCreate(null)
   }
 

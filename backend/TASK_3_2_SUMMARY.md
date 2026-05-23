@@ -269,3 +269,4 @@ L'endpoint est maintenant **100% prêt** pour l'intégration avec l'application 
 
 **La Tâche 3.2 est terminée avec succès ! Prêt pour la Tâche 3.3 : Mobile - API Client** 🚀
 
+

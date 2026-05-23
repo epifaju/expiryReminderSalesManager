@@ -328,3 +328,4 @@ Les utilisateurs bénéficient maintenant de :
 4. 🚀 Gardez votre application à jour
 
 **La documentation est maintenant complète et prête pour les utilisateurs !** 🎉
+

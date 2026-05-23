@@ -473,3 +473,4 @@ runBenchmark().catch((error) => {
   console.error("\n💥 Erreur fatale:", error);
   process.exit(1);
 });
+

@@ -312,3 +312,4 @@ Le mode hors ligne de **Sales Manager** vous permet de travailler **partout, tou
 
 _Dernière mise à jour : Octobre 2025_  
 _Version : 1.0_
+

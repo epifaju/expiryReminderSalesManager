@@ -863,3 +863,4 @@ class ConflictService {
 // Export de l'instance singleton
 export default ConflictService.getInstance();
 
+

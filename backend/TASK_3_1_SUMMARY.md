@@ -264,3 +264,4 @@ Le backend de synchronisation est **production-ready** avec :
 
 **Prêt pour la Tâche 3.2 : Endpoint GET /api/sync/delta** 🚀
 
+

@@ -16,3 +16,4 @@ export { default as stockMovementDAO } from './StockMovementDAO';
 // Type pour faciliter l'utilisation
 export type DAOInstance = typeof import('./ProductDAO').default;
 
+

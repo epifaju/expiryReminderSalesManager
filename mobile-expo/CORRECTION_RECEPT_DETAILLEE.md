@@ -154,3 +154,4 @@ Après ces corrections, le bouton "Générer Réçu v2.0" devrait :
 
 
 
+

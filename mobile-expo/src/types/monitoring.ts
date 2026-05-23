@@ -654,3 +654,4 @@ export interface IObservabilityService {
   endSpan(span: Span, status?: SpanStatus, error?: ErrorDetails): void;
 }
 
+

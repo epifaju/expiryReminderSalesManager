@@ -152,3 +152,4 @@ console.log(
   '   3. Inspecter la DB: adb shell "run-as com.salesmanager sqlite3 /data/data/com.salesmanager/databases/salesmanager.db"'
 );
 
+

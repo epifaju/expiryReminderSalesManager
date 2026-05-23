@@ -176,3 +176,4 @@ public class SyncConflict {
         this.conflictDetails = conflictDetails;
     }
 }
+

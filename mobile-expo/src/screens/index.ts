@@ -9,3 +9,4 @@ export { default as SyncStatusScreen } from './SyncStatusScreen';
 // Export des types (si nécessaire)
 // export type { SyncStatusScreenProps } from './SyncStatusScreen';
 
+

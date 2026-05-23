@@ -437,3 +437,4 @@ REINDEX DATABASE salesmanager;
 ```
 
 **Les performances SQL sont maintenant optimales pour la production !** 🎉
+

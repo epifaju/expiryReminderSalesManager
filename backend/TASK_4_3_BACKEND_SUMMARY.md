@@ -427,3 +427,4 @@ ORDER BY created_at DESC;
 ```
 
 **L'implémentation backend de la gestion des conflits est production-ready !** 🎉
+

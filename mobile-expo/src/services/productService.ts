@@ -32,27 +32,41 @@ export interface Product {
   id: number;
   name: string;
   description?: string;
-  category: string;
+  barcode?: string;
+  category?: string;
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
   stockQuantity: number;
   minStockLevel: number;
   expiryDate?: string;
-  createdAt: string;
-  updatedAt: string;
+  manufacturingDate?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  createdByUsername?: string;
+  isLowStock?: boolean;
+  isExpiringSoon?: boolean;
+  isExpired?: boolean;
+  profit?: number;
+  profitMargin?: number;
 }
 
 export interface ProductRequest {
   name: string;
   description?: string;
-  category: string;
+  barcode?: string;
+  category?: string;
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
   stockQuantity: number;
   minStockLevel: number;
   expiryDate?: string;
+  manufacturingDate?: string;
+  imageUrl?: string;
+  isActive?: boolean;
 }
 
 class ProductService {
@@ -88,7 +102,7 @@ class ProductService {
     }
   }
 
-  async updateProduct(id: number, productData: Partial<ProductRequest>) {
+  async updateProduct(id: number, productData: ProductRequest) {
     try {
       const response = await apiClient.put(`/products/${id}`, productData);
       return response.data;
@@ -156,10 +170,6 @@ class ProductService {
 
     if (!productData.name?.trim()) {
       errors.push('Le nom du produit est requis');
-    }
-
-    if (!productData.category?.trim()) {
-      errors.push('La catégorie est requise');
     }
 
     if (!productData.unit?.trim()) {

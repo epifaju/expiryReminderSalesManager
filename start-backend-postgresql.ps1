@@ -107,11 +107,11 @@ Write-Host "Le backend va démarrer..." -ForegroundColor Green
 Write-Host ""
 
 # Démarrer avec le profil PostgreSQL
-mvn spring-boot:run -Dspring.profiles.active=postgresql
+mvn spring-boot:run "-Dspring.profiles.active=postgresql"
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  🛑 Backend arrêté                         " -ForegroundColor Cyan
+Write-Host "  [ARRET] Backend arrete" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 

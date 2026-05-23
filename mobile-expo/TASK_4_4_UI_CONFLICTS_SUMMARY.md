@@ -533,3 +533,4 @@ import { ConflictNotification } from './src/components/ConflictNotification';
 ```
 
 **L'UI de résolution de conflits est prête à offrir une excellente expérience utilisateur !** 🎉
+

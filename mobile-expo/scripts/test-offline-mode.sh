@@ -165,3 +165,4 @@ echo "   adb shell \"run-as $PACKAGE sqlite3 $DB_PATH 'SELECT COUNT(*) FROM sync
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+

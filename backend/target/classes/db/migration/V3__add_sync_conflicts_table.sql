@@ -44,3 +44,4 @@ COMMENT ON COLUMN sync_conflicts.resolution_strategy IS 'Stratégie de résoluti
 COMMENT ON COLUMN sync_conflicts.local_data IS 'Données locales (client) au format JSON';
 COMMENT ON COLUMN sync_conflicts.server_data IS 'Données serveur au format JSON';
 
+

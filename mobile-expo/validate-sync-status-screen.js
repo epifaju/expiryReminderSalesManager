@@ -326,3 +326,4 @@ console.log("\n" + "=".repeat(60));
 console.log("📅 Tâche 2.4 - Écran État de synchronisation TERMINÉE !");
 console.log("=".repeat(60));
 
+

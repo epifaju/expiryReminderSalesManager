@@ -205,3 +205,4 @@ Tâche 2.1 : Service de détection réseau avec @react-native-community/netinfo
 **Statut** : ✅ TERMINÉ  
 **Prochaine étape** : Semaine 2 - Détection réseau et queue de synchronisation
 
+

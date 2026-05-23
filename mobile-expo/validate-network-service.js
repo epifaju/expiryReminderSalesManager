@@ -228,3 +228,4 @@ console.log("   2. Créer les badges d'état réseau");
 console.log("   3. Intégrer avec la synchronisation");
 console.log("   4. Tests d'intégration réseau");
 
+

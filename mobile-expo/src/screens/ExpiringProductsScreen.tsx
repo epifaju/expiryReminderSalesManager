@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,31 +10,16 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatPrice, formatDate } from '../utils/formatters';
-import productService from '../services/productService';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  barcode: string;
-  purchasePrice: number;
-  sellingPrice: number;
-  stockQuantity: number;
-  minStockLevel: number;
-  expiryDate: string;
-  manufacturingDate: string;
-  category: string;
-  unit: string;
-  isActive: boolean;
-  isExpired?: boolean;
-  isExpiringSoon?: boolean;
-}
+import productService, { Product } from '../services/productService';
+import ProductDetailView from '../components/ProductDetailView';
+import ProductForm from '../components/ProductForm';
+import { useProductDetailFlow } from '../hooks/useProductDetailFlow';
 
 interface ExpiringProductsScreenProps {
   token: string;
 }
 
-const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }) => {
+const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = () => {
   const { t, i18n } = useTranslation();
   const [expiringProducts, setExpiringProducts] = useState<Product[]>([]);
   const [expiredProducts, setExpiredProducts] = useState<Product[]>([]);
@@ -49,30 +34,23 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       return null;
     }
 
-    // Validation des champs requis
     if (!product.id || !product.name) {
       console.warn(t('expiringProducts.missingFields'), product);
       return null;
     }
 
-    // Nettoyage et validation de la date d'expiration
     let cleanExpiryDate = product.expiryDate;
     if (cleanExpiryDate) {
-      // Si c'est un tableau (cas possible avec certaines sérialisations), prendre le premier élément
       if (Array.isArray(cleanExpiryDate)) {
         cleanExpiryDate = cleanExpiryDate[0];
       }
-      
-      // Convertir en string si nécessaire
       if (typeof cleanExpiryDate !== 'string') {
         cleanExpiryDate = String(cleanExpiryDate);
       }
-      
-      // Vérifier que la date est valide
       const testDate = new Date(cleanExpiryDate);
       if (isNaN(testDate.getTime())) {
         console.warn(t('expiringProducts.invalidExpiryDate'), product.name, cleanExpiryDate);
-        cleanExpiryDate = null;
+        cleanExpiryDate = undefined;
       }
     }
 
@@ -86,10 +64,10 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       stockQuantity: Number(product.stockQuantity) || 0,
       minStockLevel: Number(product.minStockLevel) || 0,
       expiryDate: cleanExpiryDate,
-      manufacturingDate: product.manufacturingDate || '',
+      manufacturingDate: product.manufacturingDate || undefined,
       category: product.category || t('products.noCategory'),
-      unit: product.unit || '',
-      isActive: Boolean(product.isActive),
+      unit: product.unit || 'pcs',
+      isActive: product.isActive !== false,
       isExpired: product.isExpired,
       isExpiringSoon: product.isExpiringSoon,
     };
@@ -100,22 +78,15 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       setLoading(true);
       const expiringData = await productService.getExpiringProducts(warningDays);
       const expiredData = await productService.getExpiredProducts();
-      
-      console.log('📦 Produits expirants reçus:', expiringData);
-      console.log('📦 Produits expirés reçus:', expiredData);
-      
-      // Valider et nettoyer les données
-      const cleanExpiringProducts = Array.isArray(expiringData) 
-        ? expiringData.map(validateAndCleanProduct).filter(Boolean) as Product[]
+
+      const cleanExpiringProducts = Array.isArray(expiringData)
+        ? (expiringData.map(validateAndCleanProduct).filter(Boolean) as Product[])
         : [];
-      
-      const cleanExpiredProducts = Array.isArray(expiredData) 
-        ? expiredData.map(validateAndCleanProduct).filter(Boolean) as Product[]
+
+      const cleanExpiredProducts = Array.isArray(expiredData)
+        ? (expiredData.map(validateAndCleanProduct).filter(Boolean) as Product[])
         : [];
-      
-      console.log('📦 Produits expirants nettoyés:', cleanExpiringProducts);
-      console.log('📦 Produits expirés nettoyés:', cleanExpiredProducts);
-      
+
       setExpiringProducts(cleanExpiringProducts);
       setExpiredProducts(cleanExpiredProducts);
     } catch (error) {
@@ -127,6 +98,26 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
       setLoading(false);
     }
   };
+
+  const syncProductInLists = useCallback((product: Product) => {
+    const cleaned = validateAndCleanProduct(product);
+    if (!cleaned) return;
+    setExpiringProducts((prev) =>
+      prev.some((p) => p.id === cleaned.id)
+        ? prev.map((p) => (p.id === cleaned.id ? cleaned : p))
+        : prev
+    );
+    setExpiredProducts((prev) =>
+      prev.some((p) => p.id === cleaned.id)
+        ? prev.map((p) => (p.id === cleaned.id ? cleaned : p))
+        : prev
+    );
+  }, [t]);
+
+  const detailFlow = useProductDetailFlow({
+    onAfterUpdate: () => loadExpiringProducts(),
+    onAfterDelete: () => loadExpiringProducts(),
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -140,108 +131,158 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
 
   const formatDateLocal = (dateString: string): string => {
     if (!dateString) return t('expiringProducts.notDefined');
-    
+
     try {
       const date = new Date(dateString);
-      // Vérifier si la date est valide
       if (isNaN(date.getTime())) {
-        console.warn(t('expiringProducts.invalidDate'), dateString);
         return t('expiringProducts.invalidDate');
       }
       return formatDate(date, i18n.language);
-    } catch (error) {
-      console.error(t('expiringProducts.dateFormatError'), dateString, error);
+    } catch {
       return t('expiringProducts.invalidDate');
     }
   };
 
   const getDaysUntilExpiry = (expiryDate: string): number => {
     if (!expiryDate) return 0;
-    
+
     try {
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normaliser à minuit pour une comparaison précise
-      
+      today.setHours(0, 0, 0, 0);
       const expiry = new Date(expiryDate);
-      // Vérifier si la date est valide
-      if (isNaN(expiry.getTime())) {
-        console.warn(t('expiringProducts.invalidExpiryDate'), expiryDate);
-        return 0;
-      }
-      
-      expiry.setHours(0, 0, 0, 0); // Normaliser à minuit
-      
+      if (isNaN(expiry.getTime())) return 0;
+      expiry.setHours(0, 0, 0, 0);
       const diffTime = expiry.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays;
-    } catch (error) {
-      console.error(t('expiringProducts.daysCalculationError'), expiryDate, error);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch {
       return 0;
     }
   };
 
   const getExpiryStatus = (expiryDate: string) => {
     const daysUntilExpiry = getDaysUntilExpiry(expiryDate);
-    
+
     if (daysUntilExpiry < 0) {
       return {
         text: t('expiringProducts.expiredSince', { days: Math.abs(daysUntilExpiry) }),
         color: '#dc3545',
-        icon: '🚫'
+        icon: '🚫',
       };
-    } else if (daysUntilExpiry === 0) {
+    }
+    if (daysUntilExpiry === 0) {
       return {
         text: t('expiringProducts.expiresToday'),
         color: '#dc3545',
-        icon: '⚠️'
+        icon: '⚠️',
       };
-    } else if (daysUntilExpiry === 1) {
+    }
+    if (daysUntilExpiry === 1) {
       return {
         text: t('expiringProducts.expiresTomorrow'),
         color: '#fd7e14',
-        icon: '⚠️'
-      };
-    } else {
-      return {
-        text: t('expiringProducts.expiresIn', { days: daysUntilExpiry }),
-        color: '#ffc107',
-        icon: '⏰'
+        icon: '⚠️',
       };
     }
+    return {
+      text: t('expiringProducts.expiresIn', { days: daysUntilExpiry }),
+      color: '#ffc107',
+      icon: '⏰',
+    };
   };
 
+  const renderDetailHeader = (title: string, onBack: () => void) => (
+    <View style={styles.header}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+    </View>
+  );
+
   const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
-    const expiryStatus = getExpiryStatus(product.expiryDate);
-    
+    const expiryStatus = getExpiryStatus(product.expiryDate || '');
+
     return (
-      <View style={styles.productCard}>
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => detailFlow.openProductDetail(product, syncProductInLists)}
+        activeOpacity={0.7}
+      >
         <View style={styles.productHeader}>
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productCategory}>{product.category || t('products.noCategory')}</Text>
         </View>
-        
-        <Text style={styles.productDescription}>{product.description}</Text>
-        
+
+        <Text style={styles.productDescription} numberOfLines={2}>
+          {product.description}
+        </Text>
+
         <View style={styles.expiryInfo}>
           <Text style={[styles.expiryStatus, { color: expiryStatus.color }]}>
             {expiryStatus.icon} {expiryStatus.text}
           </Text>
           <Text style={styles.expiryDate}>
-            {t('expiringProducts.expiryDate')}: {formatDateLocal(product.expiryDate)}
+            {t('expiringProducts.expiryDate')}: {formatDateLocal(product.expiryDate || '')}
           </Text>
         </View>
-        
+
         <View style={styles.productDetails}>
-          <Text style={styles.productPrice}>{t('products.sellingPrice')}: {formatPrice(product.sellingPrice, i18n.language)}</Text>
-          <Text style={styles.productStock}>{t('products.stock')}: {product.stockQuantity}</Text>
+          <Text style={styles.productPrice}>
+            {t('products.sellingPrice')}: {formatPrice(product.sellingPrice, i18n.language)}
+          </Text>
+          <Text style={styles.productStock}>
+            {t('products.stock')}: {product.stockQuantity}
+          </Text>
         </View>
-        
+
         {product.stockQuantity < product.minStockLevel && (
           <Text style={styles.lowStockWarning}>⚠️ {t('products.lowStock')}</Text>
         )}
-      </View>
+        <Text style={styles.tapHint}>{t('products.tapForDetail')}</Text>
+      </TouchableOpacity>
     );
   };
+
+  if (detailFlow.screenMode === 'edit' && detailFlow.selectedProduct) {
+    return (
+      <View style={styles.container}>
+        {renderDetailHeader(`📦 ${t('products.editProduct')}`, () =>
+          detailFlow.setScreenMode('detail')
+        )}
+        <ProductForm
+          values={detailFlow.formValues}
+          onChange={detailFlow.setFormValues}
+          onSubmit={() => detailFlow.submitUpdate(syncProductInLists)}
+          onCancel={() => detailFlow.setScreenMode('detail')}
+          mode="edit"
+          isSubmitting={detailFlow.isSubmitting}
+        />
+      </View>
+    );
+  }
+
+  if (detailFlow.screenMode === 'detail' && detailFlow.selectedProduct) {
+    return (
+      <View style={styles.container}>
+        {renderDetailHeader(`📦 ${t('products.productDetail')}`, detailFlow.goToList)}
+        <ProductDetailView
+          product={detailFlow.selectedProduct}
+          refreshing={detailFlow.detailRefreshing}
+          refreshFailed={detailFlow.detailRefreshFailed}
+          onRetryRefresh={() =>
+            detailFlow.refreshProductFromApi(detailFlow.selectedProduct!.id, syncProductInLists)
+          }
+          onEdit={detailFlow.openEditForm}
+          onDelete={detailFlow.confirmDelete}
+          canDelete={detailFlow.canDelete}
+        />
+      </View>
+    );
+  }
 
   const currentProducts = activeTab === 'expiring' ? expiringProducts : expiredProducts;
 
@@ -251,7 +292,6 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
         <Text style={styles.headerTitle}>⏰ {t('expiringProducts.title')}</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'expiring' && styles.activeTab]}
@@ -261,7 +301,7 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
             {t('expiringProducts.expiringSoon')} ({expiringProducts.length})
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.tab, activeTab === 'expired' && styles.activeTab]}
           onPress={() => setActiveTab('expired')}
@@ -272,7 +312,6 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
         </TouchableOpacity>
       </View>
 
-      {/* Warning Days Selector (only for expiring tab) */}
       {activeTab === 'expiring' && (
         <View style={styles.warningDaysContainer}>
           <Text style={styles.warningDaysLabel}>{t('expiringProducts.alertInNext')}:</Text>
@@ -282,15 +321,18 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
                 key={days}
                 style={[
                   styles.warningDaysButton,
-                  warningDays === days && styles.activeWarningDaysButton
+                  warningDays === days && styles.activeWarningDaysButton,
                 ]}
                 onPress={() => setWarningDays(days)}
               >
-                <Text style={[
-                  styles.warningDaysButtonText,
-                  warningDays === days && styles.activeWarningDaysButtonText
-                ]}>
-                  {days}{t('expiringProducts.daysSuffix')}
+                <Text
+                  style={[
+                    styles.warningDaysButtonText,
+                    warningDays === days && styles.activeWarningDaysButtonText,
+                  ]}
+                >
+                  {days}
+                  {t('expiringProducts.daysSuffix')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -300,31 +342,25 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = ({ token }
 
       <ScrollView
         style={styles.productsList}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.productsCount}>
           {currentProducts.length} {t('expiringProducts.productsFound')}
         </Text>
 
         {currentProducts.length > 0 ? (
-          currentProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))
+          currentProducts.map((product) => <ProductCard key={product.id} product={product} />)
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              {activeTab === 'expiring' 
-                ? t('expiringProducts.noExpiringProducts') 
-                : t('expiringProducts.noExpiredProducts')
-              }
+              {activeTab === 'expiring'
+                ? t('expiringProducts.noExpiringProducts')
+                : t('expiringProducts.noExpiredProducts')}
             </Text>
             <Text style={styles.emptyStateSubtext}>
-              {activeTab === 'expiring' 
-                ? t('expiringProducts.allProductsGood') 
-                : t('expiringProducts.noExpiredToManage')
-              }
+              {activeTab === 'expiring'
+                ? t('expiringProducts.allProductsGood')
+                : t('expiringProducts.noExpiredToManage')}
             </Text>
           </View>
         )}
@@ -343,10 +379,24 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
+    flex: 1,
+  },
+  backButton: {
+    marginRight: 10,
+    padding: 4,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -427,10 +477,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
@@ -495,6 +542,12 @@ const styles = StyleSheet.create({
     color: '#dc3545',
     marginTop: 8,
     fontWeight: 'bold',
+  },
+  tapHint: {
+    fontSize: 11,
+    color: '#fd7e14',
+    marginTop: 8,
+    textAlign: 'right',
   },
   emptyState: {
     alignItems: 'center',

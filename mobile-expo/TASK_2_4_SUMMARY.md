@@ -258,3 +258,4 @@ L'écran de synchronisation est **production-ready** avec :
 
 **Prêt pour la Semaine 3 : Intégration Backend et API** 🚀
 
+

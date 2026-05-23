@@ -371,3 +371,4 @@ L'application **Sales Manager** respecte tous les objectifs de consommation batt
 
 _Dernière mise à jour : 07 octobre 2025_  
 _Version : 1.0_
+

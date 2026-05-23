@@ -396,3 +396,4 @@ class NetworkService {
 // Export de l'instance singleton
 export default NetworkService.getInstance();
 
+

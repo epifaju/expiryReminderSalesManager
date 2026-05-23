@@ -733,3 +733,4 @@ class SyncQueueService {
 // Export de l'instance singleton
 export default SyncQueueService.getInstance();
 
+

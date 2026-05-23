@@ -312,3 +312,4 @@ console.log("\n" + "=".repeat(60));
 console.log("📅 Prochaine étape : Semaine 2 - Queue et Détection Réseau");
 console.log("=".repeat(60));
 
+

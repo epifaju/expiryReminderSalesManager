@@ -278,3 +278,4 @@ describe('NetworkStatusBadge', () => {
   });
 });
 
+

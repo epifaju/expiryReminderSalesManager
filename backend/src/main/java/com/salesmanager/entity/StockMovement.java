@@ -97,3 +97,4 @@ public class StockMovement {
         this.updatedAt = updatedAt;
     }
 }
+

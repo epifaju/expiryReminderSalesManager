@@ -613,3 +613,4 @@ class SyncService {
 // Export de l'instance singleton
 export default SyncService.getInstance();
 
+

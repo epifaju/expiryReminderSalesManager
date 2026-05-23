@@ -220,3 +220,4 @@ console.log("   1. Tester l'intégration avec la base de données");
 console.log("   2. Créer les tests E2E pour les opérations CRUD");
 console.log("   3. Implémenter la synchronisation (Semaine 2)");
 
+

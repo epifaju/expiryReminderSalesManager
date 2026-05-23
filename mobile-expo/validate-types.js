@@ -161,3 +161,4 @@ console.log("   1. Créer les DAO (Data Access Objects)");
 console.log("   2. Implémenter les opérations CRUD");
 console.log("   3. Tester l'intégration avec la base de données");
 
+

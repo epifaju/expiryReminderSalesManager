@@ -365,3 +365,4 @@ Le service de retry est maintenant **100% prêt** pour l'intégration avec :
 
 **Le service de retry est maintenant prêt à améliorer la résilience de tout le système !** 🎉
 
+
