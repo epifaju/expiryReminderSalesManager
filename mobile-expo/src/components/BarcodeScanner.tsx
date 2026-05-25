@@ -1,27 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Alert, TouchableOpacity, Modal, Dimensions, Platform } from 'react-native';
-import { CameraView, PermissionStatus, useCameraPermissions } from 'expo-camera';
+import { useTranslation } from 'react-i18next';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { parseScannedBarcode } from '../bluetooth/scannerUtils';
 
 interface BarcodeScannerProps {
   isVisible: boolean;
   onScan: (barcode: string) => void;
   onClose: () => void;
   title?: string;
+  /** Si true (défaut), applique le code scanné sans boîte de dialogue de confirmation. */
+  autoConfirm?: boolean;
 }
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   isVisible,
   onScan,
   onClose,
-  title = "Scanner le code-barres"
+  title = 'Scanner le code-barres',
+  autoConfirm = true,
 }) => {
+  const { t } = useTranslation();
   const [scanned, setScanned] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
+  const scanLockRef = useRef(false);
 
   useEffect(() => {
     if (isVisible) {
       console.log('📱 Démarrage de l\'écran scanner...');
       setScanned(false);
+      scanLockRef.current = false;
     }
   }, [isVisible]);
 
@@ -39,19 +47,44 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     }
   }, [isVisible, permission, requestPermission]);
 
+  const applyScan = (raw: string) => {
+    const parsed = parseScannedBarcode(raw);
+    if (!parsed.barcode || parsed.barcode.length < 4) {
+      if (__DEV__) {
+        console.debug('[BarcodeScanner] Code ignoré:', raw);
+      }
+      return;
+    }
+    if (__DEV__ && parsed.isGs1) {
+      console.log('[BarcodeScanner] GS1 extrait:', parsed.barcode, parsed.expiryDate, parsed.lot);
+    }
+    onScan(parsed.barcode);
+    onClose();
+  };
+
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    if (scanned) return;
-    
+    if (scanned || scanLockRef.current) {
+      return;
+    }
+
     console.log('🎯 Code-barres détecté:', { type, data });
     setScanned(true);
-    
-    // Alerte de confirmation
+    scanLockRef.current = true;
+
+    if (autoConfirm) {
+      applyScan(data);
+      return;
+    }
+
     Alert.alert(
-      'Code-barres détecté',
-      `Valeur: ${data}\nType: ${type}`,
+      t('products.productFound'),
+      data,
       [
-        { text: 'Annuler', onPress: () => setScanned(false) },
-        { text: 'Valider', onPress: () => onScan(data) }
+        { text: t('common.cancel'), onPress: () => {
+          setScanned(false);
+          scanLockRef.current = false;
+        } },
+        { text: t('common.ok'), onPress: () => applyScan(data) },
       ]
     );
   };
@@ -116,6 +149,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <Text style={styles.instructionSubtext}>
               Veuillez autoriser l'accès à la caméra dans les paramètres de votre appareil
             </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                void requestPermission();
+              }}
+            >
+              <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.manualButton} onPress={handleClose}>
               <Text style={styles.manualButtonText}>Saisie manuelle</Text>
             </TouchableOpacity>
@@ -164,15 +205,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
             barcodeScannerSettings={{
               barcodeTypes: [
-                'qr',
-                'code128',
                 'ean13',
                 'ean8',
+                'upc_a',
+                'upc_e',
+                'code128',
                 'code39',
                 'code93',
                 'codabar',
+                'itf14',
+                'qr',
                 'pdf417',
-                'aztec'
+                'aztec',
+                'datamatrix',
               ],
             }}
           />

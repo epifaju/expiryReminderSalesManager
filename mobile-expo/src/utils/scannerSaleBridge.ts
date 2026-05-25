@@ -26,7 +26,8 @@ export function resolveSaleProductFromLocal(
   }
 
   if (local.barcode) {
-    const byBarcode = apiProducts.find((p) => p.barcode === local.barcode);
+    const normalized = local.barcode.trim();
+    const byBarcode = apiProducts.find((p) => p.barcode?.trim() === normalized);
     if (byBarcode) {
       return byBarcode;
     }

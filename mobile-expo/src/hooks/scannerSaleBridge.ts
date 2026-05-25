@@ -6,12 +6,11 @@ export interface SalesScanCallbacks {
   onScanError?: (error: string) => void;
 }
 
-let activeCallbacks: SalesScanCallbacks | null = null;
+export {
+  registerScanCallbacks,
+  getScanCallbacks,
+  registerSalesScanCallbacks,
+  getSalesScanCallbacks,
+} from './scannerBridge';
 
-export function registerSalesScanCallbacks(callbacks: SalesScanCallbacks | null): void {
-  activeCallbacks = callbacks;
-}
-
-export function getSalesScanCallbacks(): SalesScanCallbacks | null {
-  return activeCallbacks;
-}
+export type { ScanCallbacks, ScanCallbackSource } from './scannerBridge';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,17 @@ import productService, { Product } from '../services/productService';
 import authService from '../services/authService';
 import ProductForm from '../components/ProductForm';
 import ProductDetailView from '../components/ProductDetailView';
+import UnknownBarcodeModal, { QuickProductFormData } from '../components/bluetooth/UnknownBarcodeModal';
+import { registerScanCallbacks } from '../hooks/scannerBridge';
+import { createQuickProduct } from '../services/scanner/scannerProductRepository';
+import { pendingProductSyncService } from '../services/scanner/PendingProductSyncService';
+import NetworkService from '../services/network/NetworkService';
+import { LocalProduct } from '../types/localProduct';
+import {
+  playScanSuccessFeedback,
+  playScanNotFoundFeedback,
+} from '../bluetooth/scannerFeedback';
+import { parseScannedBarcode } from '../bluetooth/scannerUtils';
 import { formatPrice } from '../utils/formatters';
 import {
   EMPTY_PRODUCT_FORM,
@@ -41,6 +52,10 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
   const [detailRefreshFailed, setDetailRefreshFailed] = useState(false);
   const [formValues, setFormValues] = useState<ProductFormValues>(EMPTY_PRODUCT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [unknownBarcode, setUnknownBarcode] = useState('');
+  const [showUnknownModal, setShowUnknownModal] = useState(false);
+  const productsRef = useRef(products);
+  productsRef.current = products;
 
   const canDelete = authService
     .getUser()
@@ -100,36 +115,242 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
     setScreenMode('add');
   };
 
+  const findCatalogProductByBarcode = useCallback(
+    (barcode: string) =>
+      productsRef.current.find((p) => p.barcode?.trim() === barcode.trim()),
+    []
+  );
+
+  const findCatalogProductByLocal = useCallback(
+    (local: LocalProduct) => {
+      if (local.server_id) {
+        const byId = productsRef.current.find((p) => p.id === local.server_id);
+        if (byId) return byId;
+      }
+      if (local.barcode) {
+        return findCatalogProductByBarcode(local.barcode);
+      }
+      return null;
+    },
+    [findCatalogProductByBarcode]
+  );
+
+  const openUnknownProductModal = useCallback((barcode: string) => {
+    setUnknownBarcode(barcode);
+    setShowUnknownModal(true);
+  }, []);
+
+  const handleExistingProductScan = useCallback(
+    (product: Product, barcode: string) => {
+      Alert.alert(
+        t('products.productFound'),
+        `${t('products.existingProduct')}: ${product.name}`,
+        [
+          {
+            text: t('products.productDetail'),
+            onPress: () => openProductDetail(product),
+          },
+          {
+            text: t('products.useAsBase'),
+            onPress: () => {
+              setFormValues(productToFormValues({ ...product, barcode }));
+            },
+          },
+          {
+            text: t('products.newProduct'),
+            onPress: () => {
+              setFormValues((prev) => ({ ...prev, barcode }));
+            },
+          },
+          { text: t('common.cancel'), style: 'cancel' },
+        ]
+      );
+    },
+    [t]
+  );
+
+  const handleUnknownBarcode = useCallback(
+    (barcode: string) => {
+      const fromCatalog = findCatalogProductByBarcode(barcode);
+      if (fromCatalog) {
+        void playScanSuccessFeedback();
+        if (screenMode === 'add' || screenMode === 'edit') {
+          handleExistingProductScan(fromCatalog, barcode);
+        } else {
+          openProductDetail(fromCatalog);
+        }
+        return;
+      }
+
+      void playScanNotFoundFeedback();
+      if (screenMode === 'add') {
+        openUnknownProductModal(barcode);
+      } else if (screenMode === 'edit') {
+        setFormValues((prev) => ({ ...prev, barcode }));
+      }
+    },
+    [screenMode, findCatalogProductByBarcode, handleExistingProductScan, openUnknownProductModal]
+  );
+
+  const syncPendingLocalProduct = useCallback(
+    async (local: LocalProduct) => {
+      if (!NetworkService.isOnline()) {
+        Alert.alert(t('common.error'), t('errors.networkUnavailable'));
+        return;
+      }
+
+      try {
+        const syncResult = await pendingProductSyncService.syncAll();
+        const productsData = await productService.getProducts();
+        const productsArray = Array.isArray(productsData) ? productsData : [];
+        setProducts(productsArray);
+        productsRef.current = productsArray;
+
+        const fromCatalog =
+          (local.server_id
+            ? productsArray.find((p) => p.id === local.server_id)
+            : null) ??
+          (local.barcode
+            ? productsArray.find((p) => p.barcode?.trim() === local.barcode?.trim())
+            : null);
+        if (fromCatalog) {
+          setShowUnknownModal(false);
+          setUnknownBarcode('');
+          if (screenMode === 'add' || screenMode === 'edit') {
+            handleExistingProductScan(fromCatalog, local.barcode ?? '');
+          } else {
+            openProductDetail(fromCatalog);
+          }
+          Alert.alert(t('common.success'), t('products.syncSuccess'));
+          return;
+        }
+
+        if (syncResult.synced > 0) {
+          Alert.alert(t('common.success'), t('products.syncSuccess'));
+        } else if (syncResult.failed > 0) {
+          Alert.alert(t('common.error'), syncResult.errors.join('\n') || t('products.syncFailed'));
+        } else {
+          Alert.alert(t('common.error'), t('products.syncFailed'));
+        }
+      } catch (error) {
+        console.error('Erreur sync produit pending:', error);
+        Alert.alert(t('common.error'), t('products.syncFailed'));
+      }
+    },
+    [screenMode, findCatalogProductByLocal, handleExistingProductScan, t]
+  );
+
+  const promptSyncPendingProduct = useCallback(
+    (local: LocalProduct) => {
+      Alert.alert(t('products.local_pending_title'), t('products.local_pending_message'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('products.syncNow'),
+          onPress: () => {
+            void syncPendingLocalProduct(local);
+          },
+        },
+      ]);
+    },
+    [syncPendingLocalProduct, t]
+  );
+
+  const handleScannedProductFound = useCallback(
+    (local: LocalProduct) => {
+      void playScanSuccessFeedback();
+      const fromCatalog = findCatalogProductByLocal(local);
+      if (fromCatalog) {
+        if (screenMode === 'add' || screenMode === 'edit') {
+          handleExistingProductScan(fromCatalog, local.barcode ?? '');
+        } else {
+          openProductDetail(fromCatalog);
+        }
+        return;
+      }
+      promptSyncPendingProduct(local);
+    },
+    [screenMode, findCatalogProductByLocal, handleExistingProductScan, promptSyncPendingProduct]
+  );
+
+  const handleScannedProductNotFound = useCallback(
+    (barcode: string) => {
+      handleUnknownBarcode(barcode);
+    },
+    [handleUnknownBarcode]
+  );
+
+  const handleQuickCreateProduct = async (data: QuickProductFormData) => {
+    const user = authService.getUser();
+    if (!user) {
+      Alert.alert(t('common.error'), t('errors.authFailed'));
+      return;
+    }
+
+    try {
+      await createQuickProduct(data, String(user.id));
+      setShowUnknownModal(false);
+      setUnknownBarcode('');
+
+      if (NetworkService.isOnline()) {
+        await pendingProductSyncService.syncAll();
+      }
+      await loadProducts();
+
+      Alert.alert(t('common.success'), t('bluetooth.product_created'));
+      goToList();
+    } catch (error) {
+      console.error('Erreur création produit rapide:', error);
+      Alert.alert(t('common.error'), t('errors.unknownError'));
+    }
+  };
+
+  useEffect(() => {
+    if (screenMode !== 'add' && screenMode !== 'edit') {
+      registerScanCallbacks('products', null);
+      return;
+    }
+
+    registerScanCallbacks('products', {
+      onProductFound: handleScannedProductFound,
+      onProductNotFound: handleScannedProductNotFound,
+      onScanError: (message) => Alert.alert(t('common.error'), message),
+    });
+
+    return () => registerScanCallbacks('products', null);
+  }, [screenMode, handleScannedProductFound, handleScannedProductNotFound, t]);
+
   const openEditForm = () => {
     if (!selectedProduct) return;
     setFormValues(productToFormValues(selectedProduct));
     setScreenMode('edit');
   };
 
-  const handleBarcodeScanOnCreate = (scannedBarcode: string) => {
-    setFormValues((prev) => ({ ...prev, barcode: scannedBarcode }));
-    const existingProduct = products.find((p) => p.barcode === scannedBarcode);
-    if (existingProduct) {
-      Alert.alert(
-        t('products.productFound'),
-        `${t('products.existingProduct')}: ${existingProduct.name}`,
-        [
-          {
-            text: t('products.useAsBase'),
-            onPress: () => {
-              setFormValues(productToFormValues({ ...existingProduct, barcode: scannedBarcode }));
-            },
-          },
-          {
-            text: t('products.newProduct'),
-            onPress: () => {
-              setFormValues((prev) => ({ ...prev, barcode: scannedBarcode }));
-            },
-          },
-        ]
-      );
-    }
-  };
+  /** Scan caméra sur le formulaire complet : préremplit le code-barres (pas le modal création rapide). */
+  const handleBarcodeScanOnForm = useCallback(
+    (scannedBarcode: string) => {
+      const parsed = parseScannedBarcode(scannedBarcode);
+      const retailBarcode = parsed.barcode;
+      if (!retailBarcode) {
+        return;
+      }
+
+      setFormValues((prev) => ({
+        ...prev,
+        barcode: retailBarcode,
+        ...(parsed.expiryDate ? { expiryDate: parsed.expiryDate } : {}),
+      }));
+
+      const fromCatalog = findCatalogProductByBarcode(retailBarcode);
+      if (fromCatalog) {
+        void playScanSuccessFeedback();
+        handleExistingProductScan(fromCatalog, retailBarcode);
+        return;
+      }
+
+      void playScanNotFoundFeedback();
+    },
+    [findCatalogProductByBarcode, handleExistingProductScan]
+  );
 
   const submitCreate = async () => {
     if (!formValues.name || !formValues.purchasePrice || !formValues.sellingPrice) {
@@ -291,7 +512,16 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
           onCancel={goToList}
           mode="create"
           isSubmitting={isSubmitting}
-          onBarcodeScanned={handleBarcodeScanOnCreate}
+          onBarcodeScanned={handleBarcodeScanOnForm}
+        />
+        <UnknownBarcodeModal
+          visible={showUnknownModal}
+          barcode={unknownBarcode}
+          onCreateProduct={handleQuickCreateProduct}
+          onDismiss={() => {
+            setShowUnknownModal(false);
+            setUnknownBarcode('');
+          }}
         />
       </View>
     );
@@ -308,6 +538,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
           onCancel={() => setScreenMode('detail')}
           mode="edit"
           isSubmitting={isSubmitting}
+          onBarcodeScanned={handleBarcodeScanOnForm}
         />
       </View>
     );

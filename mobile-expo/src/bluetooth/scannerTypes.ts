@@ -60,6 +60,8 @@ export const DEFAULT_SCANNER_PREFERENCES: ScannerPreferences = {
 
 /** Debounce anti double-scan matériel (PRD section 6, règle 2). */
 export const SCAN_DEBOUNCE_MS = 500;
+/** Ignore tout scan supplémentaire dans cette fenêtre (fragments / double lecture SPP). */
+export const SCAN_BURST_SUPPRESS_MS = 1200;
 
 /** Reconnexion automatique (PRD section 6, règle 3). */
 export const RECONNECT_INTERVAL_MS = 5000;

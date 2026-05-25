@@ -18,6 +18,9 @@ import UnknownBarcodeModal, { QuickProductFormData } from '../components/bluetoo
 import { formatPrice, formatDate } from '../utils/formatters';
 import { registerSalesScanCallbacks } from '../hooks/scannerSaleBridge';
 import { resolveSaleProductFromLocal } from '../utils/scannerSaleBridge';
+import productDAO from '../dao/ProductDAO';
+import { applyScannerSqlMigrations } from '../database/scannerSqlMigrations';
+import { normalizeBarcode } from '../bluetooth/scannerUtils';
 import { createQuickProduct } from '../services/scanner/scannerProductRepository';
 import authService from '../services/authService';
 import { LocalProduct } from '../types/localProduct';
@@ -86,62 +89,170 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [pendingCartProduct, setPendingCartProduct] = useState<Product | null>(null);
   const productsRef = useRef(products);
   productsRef.current = products;
+  const lastSaleScanRef = useRef<{ barcode: string; at: number } | null>(null);
+  const saleScanInFlightRef = useRef(false);
+  const lastSaleSuccessRef = useRef<{ barcode: string; at: number } | null>(null);
 
-  const tryAddScannedProductToCart = useCallback(
-    (local: LocalProduct, catalog: Product[]): boolean => {
-      const saleProduct = resolveSaleProductFromLocal(local, catalog);
-      if (saleProduct?.id) {
-        setActiveTab('new');
-        setPendingCartProduct(saleProduct);
-        return true;
-      }
-      return false;
+  const dismissUnknownModal = useCallback(() => {
+    setShowUnknownModal(false);
+    setUnknownBarcode('');
+  }, []);
+
+  const addToCartAndNotify = useCallback(
+    (product: Product) => {
+      dismissUnknownModal();
+      setActiveTab('new');
+      setPendingCartProduct(product);
+      Alert.alert(t('common.success'), t('bluetooth.scan_success'));
     },
-    []
+    [dismissUnknownModal, t]
   );
 
   const openUnknownProductModal = useCallback((barcode: string) => {
-    console.log('[SalesScreen] Produit inconnu, ouverture modal:', barcode);
+    const trimmed = normalizeBarcode(barcode);
+    const recentSuccess = lastSaleSuccessRef.current;
+    if (
+      recentSuccess &&
+      Date.now() - recentSuccess.at < 3000 &&
+      (recentSuccess.barcode === trimmed ||
+        trimmed.startsWith(recentSuccess.barcode) ||
+        recentSuccess.barcode.startsWith(trimmed))
+    ) {
+      return;
+    }
+
+    const fromCatalog = productsRef.current.find((p) => p.barcode?.trim() === trimmed);
+    if (fromCatalog?.id) {
+      addToCartAndNotify(fromCatalog);
+      return;
+    }
+
+    console.log('[SalesScreen] Produit inconnu, ouverture modal:', trimmed);
     setActiveTab('new');
-    setUnknownBarcode(barcode);
+    setUnknownBarcode(trimmed);
     setShowUnknownModal(true);
+  }, [addToCartAndNotify]);
+
+  const loadProducts = useCallback(async (): Promise<Product[]> => {
+    try {
+      const response = await apiClient.get('/products');
+
+      let productsData: Product[] = [];
+      if (response.data && response.data.content) {
+        productsData = response.data.content;
+      } else if (Array.isArray(response.data)) {
+        productsData = response.data;
+      }
+
+      setProducts(productsData);
+      productsRef.current = productsData;
+      return productsData;
+    } catch (error) {
+      console.error('Erreur lors du chargement des produits:', error);
+      setProducts([]);
+      productsRef.current = [];
+      return [];
+    }
   }, []);
 
-  const handleScannedProductNotFound = useCallback(
-    (barcode: string) => {
-      void playScanNotFoundFeedback();
-      const fromCatalog = productsRef.current.find((p) => p.barcode?.trim() === barcode.trim());
-      if (fromCatalog) {
-        setActiveTab('new');
-        setPendingCartProduct(fromCatalog);
-        Alert.alert(t('common.success'), t('bluetooth.scan_success'));
+  /** Résolution unique : catalogue API → SQLite → création rapide (évite double modal). */
+  const processSaleBarcode = useCallback(
+    async (barcode: string, localHint: LocalProduct | null = null) => {
+      const trimmed = normalizeBarcode(barcode);
+      if (!trimmed) {
         return;
       }
-      openUnknownProductModal(barcode);
+
+      if (saleScanInFlightRef.current) {
+        return;
+      }
+
+      const now = Date.now();
+      const last = lastSaleScanRef.current;
+      if (last && now - last.at < 1500) {
+        return;
+      }
+      lastSaleScanRef.current = { barcode: trimmed, at: now };
+      saleScanInFlightRef.current = true;
+
+      let catalog = productsRef.current;
+      const fromCatalog = catalog.find((p) => p.barcode?.trim() === trimmed);
+      if (fromCatalog?.id) {
+        void playScanSuccessFeedback();
+        lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
+        addToCartAndNotify(fromCatalog);
+        return;
+      }
+
+      let local: LocalProduct | null = localHint;
+      if (!local) {
+        try {
+          await applyScannerSqlMigrations();
+          const user = authService.getUser();
+          local = await productDAO.findByBarcode(
+            trimmed,
+            user ? String(user.id) : undefined
+          );
+        } catch (error) {
+          console.error('[SalesScreen] Erreur recherche locale:', error);
+        }
+      }
+
+      if (local) {
+        let saleProduct =
+          resolveSaleProductFromLocal(local, catalog) ??
+          catalog.find((p) => p.barcode?.trim() === trimmed) ??
+          null;
+
+        if (!saleProduct?.id && NetworkService.isOnline()) {
+          await pendingProductSyncService.syncAll();
+          catalog = await loadProducts();
+          productsRef.current = catalog;
+          saleProduct =
+            resolveSaleProductFromLocal(local, catalog) ??
+            catalog.find((p) => p.barcode?.trim() === trimmed) ??
+            null;
+        }
+
+        if (saleProduct?.id) {
+          void playScanSuccessFeedback();
+          lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
+          addToCartAndNotify(saleProduct as Product);
+          return;
+        }
+
+        void playScanSuccessFeedback();
+        dismissUnknownModal();
+        Alert.alert(t('bluetooth.local_pending_title'), t('bluetooth.local_pending_message'));
+        return;
+      }
+
+      void playScanNotFoundFeedback();
+      openUnknownProductModal(trimmed);
     },
-    [openUnknownProductModal, t]
+    [addToCartAndNotify, dismissUnknownModal, loadProducts, openUnknownProductModal, t]
   );
 
-  const handleScannedProductFound = useCallback(
-    (local: LocalProduct) => {
-      void playScanSuccessFeedback();
-      if (tryAddScannedProductToCart(local, productsRef.current)) {
-        Alert.alert(t('common.success'), t('bluetooth.scan_success'));
-      } else {
-        Alert.alert(t('bluetooth.local_pending_title'), t('bluetooth.local_pending_message'));
+  const processSaleBarcodeSafe = useCallback(
+    async (barcode: string, localHint: LocalProduct | null = null) => {
+      try {
+        await processSaleBarcode(barcode, localHint);
+      } finally {
+        saleScanInFlightRef.current = false;
       }
     },
-    [t, tryAddScannedProductToCart]
+    [processSaleBarcode]
   );
 
   useEffect(() => {
     registerSalesScanCallbacks({
-      onProductFound: handleScannedProductFound,
-      onProductNotFound: handleScannedProductNotFound,
+      onBarcodeResolved: (barcode, local) => {
+        void processSaleBarcodeSafe(barcode, local);
+      },
       onScanError: (message) => Alert.alert(t('common.error'), message),
     });
     return () => registerSalesScanCallbacks(null);
-  }, [handleScannedProductFound, handleScannedProductNotFound, t]);
+  }, [processSaleBarcodeSafe, t]);
 
   const loadSales = async () => {
     try {
@@ -198,26 +309,6 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     }
   };
 
-  const loadProducts = async (): Promise<Product[]> => {
-    try {
-      const response = await apiClient.get('/products');
-
-      let productsData: Product[] = [];
-      if (response.data && response.data.content) {
-        productsData = response.data.content;
-      } else if (Array.isArray(response.data)) {
-        productsData = response.data;
-      }
-
-      setProducts(productsData);
-      return productsData;
-    } catch (error) {
-      console.error('Erreur lors du chargement des produits:', error);
-      setProducts([]);
-      return [];
-    }
-  };
-
   const handleQuickCreateProduct = async (data: QuickProductFormData) => {
     const user = authService.getUser();
     if (!user) {
@@ -230,14 +321,22 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       setShowUnknownModal(false);
       setUnknownBarcode('');
 
-      const catalog = await loadProducts();
-      const addedToCart = tryAddScannedProductToCart(local, catalog);
+      let catalog = await loadProducts();
+      let saleProduct = resolveSaleProductFromLocal(local, catalog);
 
       if (NetworkService.isOnline()) {
         const syncResult = await pendingProductSyncService.syncAll();
         if (syncResult.synced > 0) {
-          await loadProducts();
+          catalog = await loadProducts();
+          saleProduct = resolveSaleProductFromLocal(local, catalog);
         }
+      }
+
+      const addedToCart = Boolean(saleProduct?.id);
+      if (addedToCart && saleProduct) {
+        dismissUnknownModal();
+        setActiveTab('new');
+        setPendingCartProduct(saleProduct as Product);
       }
 
       Alert.alert(
@@ -524,17 +623,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         isVisible={showScanner}
         onScan={(scannedBarcode) => {
           setShowScanner(false);
-          const foundProduct = products.find(p => p.barcode === scannedBarcode);
-          if (foundProduct) {
-            setScannedProduct(foundProduct);
-            Alert.alert(
-              t('sales.receipt.productFound'),
-              `${foundProduct.name} - ${foundProduct.sellingPrice}€`,
-              [{ text: t('common.ok') }]
-            );
-          } else {
-            openUnknownProductModal(scannedBarcode);
-          }
+          void processSaleBarcodeSafe(scannedBarcode);
         }}
         onClose={() => setShowScanner(false)}
         title="Scanner un produit pour la vente"

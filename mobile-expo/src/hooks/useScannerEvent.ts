@@ -8,9 +8,11 @@ import authService from '../services/authService';
 import { LocalProduct } from '../types/localProduct';
 
 export interface UseScannerEventOptions {
-  onProductFound: (product: LocalProduct) => void;
-  onProductNotFound: (barcode: string) => void;
+  onProductFound?: (product: LocalProduct) => void;
+  onProductNotFound?: (barcode: string) => void;
   onScanError?: (error: string) => void;
+  /** Un seul callback par scan — évite le double traitement found + notFound. */
+  onBarcodeResolved?: (barcode: string, localProduct: LocalProduct | null) => void;
   /** Permet de désactiver l'écoute (ex. écran non focalisé). */
   enabled?: boolean;
 }
@@ -31,9 +33,18 @@ export function useScannerEvent(options: UseScannerEventOptions): UseScannerEven
 
   const [lastScan, setLastScan] = useState<ScanEvent | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const resolveInFlightRef = useRef(false);
 
   const resolveScan = useCallback(async (event: ScanEvent) => {
-    const { onProductFound, onProductNotFound, onScanError } = optionsRef.current;
+    if (resolveInFlightRef.current) {
+      if (__DEV__) {
+        console.debug('[useScannerEvent] Scan ignoré (résolution en cours)');
+      }
+      return;
+    }
+
+    const { onProductFound, onProductNotFound, onBarcodeResolved, onScanError } =
+      optionsRef.current;
     const barcode = normalizeBarcode(event.barcode);
 
     if (!isValidBarcode(barcode)) {
@@ -45,6 +56,7 @@ export function useScannerEvent(options: UseScannerEventOptions): UseScannerEven
 
     setLastScan(event);
     setIsScanning(true);
+    resolveInFlightRef.current = true;
     console.log('[useScannerEvent] Scan reçu:', barcode);
 
     try {
@@ -54,9 +66,11 @@ export function useScannerEvent(options: UseScannerEventOptions): UseScannerEven
       const userId = user ? String(user.id) : undefined;
       const product = await productDAO.findByBarcode(barcode, userId);
 
-      if (product) {
+      if (onBarcodeResolved) {
+        onBarcodeResolved(barcode, product);
+      } else if (product && onProductFound) {
         onProductFound(product);
-      } else {
+      } else if (onProductNotFound) {
         onProductNotFound(barcode);
       }
     } catch (error: any) {
@@ -64,6 +78,7 @@ export function useScannerEvent(options: UseScannerEventOptions): UseScannerEven
       console.error('[useScannerEvent]', message, error);
       onScanError?.(message);
     } finally {
+      resolveInFlightRef.current = false;
       setIsScanning(false);
     }
   }, []);

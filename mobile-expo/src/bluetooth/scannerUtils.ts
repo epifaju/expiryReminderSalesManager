@@ -1,4 +1,4 @@
-import { BluetoothDevice, SCAN_DEBOUNCE_MS } from './scannerTypes';
+import { BluetoothDevice, SCAN_DEBOUNCE_MS, SCAN_BURST_SUPPRESS_MS } from './scannerTypes';
 
 /** Timeout global liste appareils (permissions + module natif). */
 export const BLUETOOTH_LIST_DEVICES_TIMEOUT_MS = 18_000;
@@ -67,12 +67,16 @@ export function withTimeout<T>(
   });
 }
 
+import { extractRetailBarcode, parseScannedBarcode } from './gs1BarcodeParser';
+
+export { extractRetailBarcode, parseScannedBarcode } from './gs1BarcodeParser';
+export type { ParsedScannedBarcode } from './gs1BarcodeParser';
+
 /**
- * Valide un code-barres scanné (ASCII imprimable, longueur courante retail).
- * Les codes invalides sont ignorés silencieusement côté service (PRD section 17).
+ * Valide un code-barres scanné (après extraction GS1 → EAN/GTIN court).
  */
 export function isValidBarcode(raw: string): boolean {
-  const barcode = raw.trim();
+  const barcode = extractRetailBarcode(raw);
   if (barcode.length < 4 || barcode.length > 48) {
     return false;
   }
@@ -80,10 +84,10 @@ export function isValidBarcode(raw: string): boolean {
 }
 
 /**
- * Normalise un code-barres (trim, sans caractères de contrôle résiduels).
+ * Normalise un code-barres (trim, contrôle, extraction GS1 si applicable).
  */
 export function normalizeBarcode(raw: string): string {
-  return raw.replace(/[\x00-\x1F\x7F]/g, '').trim();
+  return extractRetailBarcode(raw);
 }
 
 /**
@@ -93,10 +97,16 @@ export class ScanDebouncer {
   private lastBarcode: string | null = null;
   private lastTimestamp = 0;
 
-  constructor(private readonly windowMs: number = SCAN_DEBOUNCE_MS) {}
+  constructor(
+    private readonly windowMs: number = SCAN_DEBOUNCE_MS,
+    private readonly burstSuppressMs: number = SCAN_BURST_SUPPRESS_MS
+  ) {}
 
   shouldAccept(barcode: string): boolean {
     const now = Date.now();
+    if (this.lastTimestamp > 0 && now - this.lastTimestamp < this.burstSuppressMs) {
+      return false;
+    }
     if (
       this.lastBarcode !== null &&
       barcode === this.lastBarcode &&
