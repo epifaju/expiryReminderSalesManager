@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -57,6 +57,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [showProductSelector, setShowProductSelector] = useState(false);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<number, string>>({});
 
   // Create refs for TextInputs
   const customerNameRef = useRef<TextInput>(null);
@@ -69,35 +70,163 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
     }
   }, [preselectedProduct]);
 
-  const appendProductToCart = (product: Product, qty: number) => {
-    if (qty <= 0) {
-      return;
-    }
-    if (qty > product.stockQuantity) {
-      Alert.alert(t('common.error'), `${t('sales.insufficientStock')} ${product.stockQuantity}`);
+  const alertInsufficientStock = useCallback(
+    (stock: number) => {
+      Alert.alert(t('common.error'), `${t('sales.insufficientStock')} ${stock}`);
+    },
+    [t]
+  );
+
+  const applyCartQuantity = useCallback(
+    (productId: number, targetQty: number, unitPrice?: number): boolean => {
+      if (targetQty <= 0) {
+        setSaleItems((prev) => prev.filter((item) => item.productId !== productId));
+        setQuantityDrafts((prev) => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
+        return true;
+      }
+
+      const product = products.find((p) => p.id === productId);
+      const stock = product?.stockQuantity ?? Number.MAX_SAFE_INTEGER;
+      if (targetQty > stock) {
+        alertInsufficientStock(stock);
+        return false;
+      }
+
+      setSaleItems((prev) => {
+        const index = prev.findIndex((item) => item.productId === productId);
+        if (index < 0) {
+          return prev;
+        }
+        const item = prev[index];
+        const price = unitPrice ?? item.unitPrice;
+        const next = [...prev];
+        next[index] = {
+          ...item,
+          quantity: targetQty,
+          unitPrice: price,
+          totalPrice: targetQty * price,
+        };
+        return next;
+      });
+      return true;
+    },
+    [products, alertInsufficientStock]
+  );
+
+  const changeCartQuantityBy = useCallback(
+    (productId: number, delta: number) => {
+      setSaleItems((prev) => {
+        const item = prev.find((i) => i.productId === productId);
+        if (!item) {
+          return prev;
+        }
+        const targetQty = item.quantity + delta;
+        if (targetQty <= 0) {
+          setQuantityDrafts((drafts) => {
+            const next = { ...drafts };
+            delete next[productId];
+            return next;
+          });
+          return prev.filter((i) => i.productId !== productId);
+        }
+
+        const product = products.find((p) => p.id === productId);
+        const stock = product?.stockQuantity ?? Number.MAX_SAFE_INTEGER;
+        if (targetQty > stock) {
+          setTimeout(() => alertInsufficientStock(stock), 0);
+          return prev;
+        }
+
+        return prev.map((i) =>
+          i.productId === productId
+            ? {
+                ...i,
+                quantity: targetQty,
+                totalPrice: targetQty * i.unitPrice,
+              }
+            : i
+        );
+      });
+    },
+    [products, alertInsufficientStock]
+  );
+
+  const appendProductToCart = useCallback(
+    (product: Product, qty: number) => {
+      if (qty <= 0) {
+        return;
+      }
+
+      setSaleItems((prev) => {
+        const existing = prev.find((item) => item.productId === product.id);
+        const targetQty = (existing?.quantity ?? 0) + qty;
+
+        if (targetQty > product.stockQuantity) {
+          setTimeout(() => alertInsufficientStock(product.stockQuantity), 0);
+          return prev;
+        }
+
+        if (existing) {
+          return prev.map((item) =>
+            item.productId === product.id
+              ? {
+                  ...item,
+                  quantity: targetQty,
+                  totalPrice: targetQty * product.sellingPrice,
+                }
+              : item
+          );
+        }
+
+        return [
+          ...prev,
+          {
+            productId: product.id,
+            productName: product.name,
+            quantity: qty,
+            unitPrice: product.sellingPrice,
+            totalPrice: qty * product.sellingPrice,
+          },
+        ];
+      });
+    },
+    [alertInsufficientStock]
+  );
+
+  const getQuantityInputValue = (item: SaleItem) =>
+    quantityDrafts[item.productId] ?? String(item.quantity);
+
+  const handleLineQuantityChange = (productId: number, text: string) => {
+    const digits = text.replace(/\D/g, '');
+    setQuantityDrafts((prev) => ({ ...prev, [productId]: digits }));
+  };
+
+  const commitLineQuantity = (productId: number) => {
+    const draft = quantityDrafts[productId];
+    if (draft === undefined) {
       return;
     }
 
-    setSaleItems((prev) => {
-      const existingItemIndex = prev.findIndex((item) => item.productId === product.id);
-      if (existingItemIndex >= 0) {
-        const updatedItems = [...prev];
-        updatedItems[existingItemIndex].quantity += qty;
-        updatedItems[existingItemIndex].totalPrice =
-          updatedItems[existingItemIndex].quantity * product.sellingPrice;
-        return updatedItems;
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          productName: product.name,
-          quantity: qty,
-          unitPrice: product.sellingPrice,
-          totalPrice: qty * product.sellingPrice,
-        },
-      ];
+    setQuantityDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
     });
+
+    if (draft === '') {
+      return;
+    }
+
+    const parsed = parseInt(draft, 10);
+    if (Number.isNaN(parsed)) {
+      return;
+    }
+
+    applyCartQuantity(productId, parsed);
   };
 
   useEffect(() => {
@@ -106,7 +235,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
     }
     appendProductToCart(pendingCartProduct, 1);
     onPendingCartProductHandled?.();
-  }, [pendingCartProduct]);
+  }, [pendingCartProduct, appendProductToCart, onPendingCartProductHandled]);
 
   const addItemToSale = () => {
     if (!selectedProduct || !quantity || parseInt(quantity) <= 0) {
@@ -123,7 +252,12 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
   };
 
   const removeItemFromSale = (productId: number) => {
-    setSaleItems(saleItems.filter(item => item.productId !== productId));
+    setSaleItems((prev) => prev.filter((item) => item.productId !== productId));
+    setQuantityDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
   };
 
   const getTotalAmount = () => {
@@ -144,6 +278,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
 
     // Reset form
     setSaleItems([]);
+    setQuantityDrafts({});
     setCustomerName('');
     setPaymentMethod('CASH');
   };
@@ -276,21 +411,56 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
         {/* Sale Items */}
         {saleItems.length > 0 && (
           <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Articles de la vente</Text>
-            {saleItems.map((item, index) => (
-              <View key={index} style={styles.saleItemRow}>
-                <View style={styles.saleItemInfo}>
-                  <Text style={styles.saleItemName}>{item.productName}</Text>
-                  <Text style={styles.saleItemDetails}>
-                    {item.quantity} x {formatPrice(item.unitPrice, i18n.language)} = {formatPrice(item.totalPrice, i18n.language)}
-                  </Text>
+            <Text style={styles.formLabel}>{t('sales.saleItems')}</Text>
+            {saleItems.map((item) => (
+              <View key={item.productId} style={styles.saleItemRow}>
+                <View style={styles.saleItemTopRow}>
+                  <View style={styles.saleItemInfo}>
+                    <Text style={styles.saleItemName}>{item.productName}</Text>
+                    <Text style={styles.saleItemUnitPrice}>
+                      {formatPrice(item.unitPrice, i18n.language)} / {t('sales.unit')}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeItemButton}
+                    onPress={() => removeItemFromSale(item.productId)}
+                    accessibilityLabel={t('sales.removeItem')}
+                  >
+                    <Text style={styles.removeItemButtonText}>✕</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.removeItemButton}
-                  onPress={() => removeItemFromSale(item.productId)}
-                >
-                  <Text style={styles.removeItemButtonText}>✕</Text>
-                </TouchableOpacity>
+
+                <View style={styles.quantityStepperRow}>
+                  <TouchableOpacity
+                    style={styles.qtyStepButton}
+                    onPress={() => changeCartQuantityBy(item.productId, -1)}
+                    accessibilityLabel={t('sales.decreaseQuantity')}
+                  >
+                    <Text style={styles.qtyStepButtonText}>−</Text>
+                  </TouchableOpacity>
+
+                  <TextInput
+                    style={styles.lineQuantityInput}
+                    value={getQuantityInputValue(item)}
+                    onChangeText={(text) => handleLineQuantityChange(item.productId, text)}
+                    onBlur={() => commitLineQuantity(item.productId)}
+                    keyboardType="number-pad"
+                    selectTextOnFocus
+                    maxLength={6}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.qtyStepButton}
+                    onPress={() => changeCartQuantityBy(item.productId, 1)}
+                    accessibilityLabel={t('sales.increaseQuantity')}
+                  >
+                    <Text style={styles.qtyStepButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.saleItemLineTotal}>
+                  {t('sales.lineTotal')}: {formatPrice(item.totalPrice, i18n.language)}
+                </Text>
               </View>
             ))}
             
@@ -407,9 +577,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   saleItemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: 'white',
     padding: 12,
     borderRadius: 8,
@@ -417,17 +584,65 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
+  saleItemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
   saleItemInfo: {
     flex: 1,
+    paddingRight: 8,
   },
   saleItemName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
   },
-  saleItemDetails: {
+  saleItemUnitPrice: {
     fontSize: 12,
     color: '#666',
+    marginTop: 4,
+  },
+  quantityStepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  qtyStepButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#667eea',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qtyStepButtonText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: 'bold',
+    lineHeight: 24,
+  },
+  lineQuantityInput: {
+    minWidth: 56,
+    textAlign: 'center',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  saleItemLineTotal: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#28a745',
+    textAlign: 'right',
   },
   removeItemButton: {
     backgroundColor: '#dc3545',

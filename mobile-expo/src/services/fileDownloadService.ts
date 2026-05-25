@@ -46,28 +46,57 @@ class FileDownloadService {
   }
 
   /**
-   * Demande les permissions nécessaires pour Android
+   * Android < 10 : WRITE_EXTERNAL_STORAGE pour le dossier public Downloads.
+   * Android 10+ : stockage scoped — sauvegarde dans le répertoire de l'app (sans cette permission).
    */
-  async requestPermissions(): Promise<boolean> {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Permission de stockage',
-            message: 'L\'application a besoin d\'accéder au stockage pour sauvegarder les fichiers PDF.',
-            buttonNeutral: 'Demander plus tard',
-            buttonNegative: 'Annuler',
-            buttonPositive: 'OK',
-          }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (error) {
-        console.error('Erreur lors de la demande de permission:', error);
-        return false;
-      }
+  async requestLegacyStoragePermission(): Promise<boolean> {
+    if (Platform.OS !== 'android') {
+      return true;
     }
-    return true; // iOS n'a pas besoin de cette permission
+
+    const androidVersion =
+      typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
+
+    if (androidVersion >= 29) {
+      return true;
+    }
+
+    try {
+      const alreadyGranted = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+      );
+      if (alreadyGranted) {
+        return true;
+      }
+
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: 'Permission de stockage',
+          message:
+            "L'application a besoin d'accéder au stockage pour enregistrer les fichiers PDF.",
+          buttonNeutral: 'Plus tard',
+          buttonNegative: 'Annuler',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (error) {
+      console.error('Erreur lors de la demande de permission:', error);
+      return false;
+    }
+  }
+
+  private shouldUseExpoStorage(): boolean {
+    if (Platform.OS === 'web') {
+      return true;
+    }
+    if (Platform.OS === 'ios') {
+      return true;
+    }
+    const androidVersion =
+      typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version), 10);
+    return androidVersion >= 29;
   }
 
   /**
@@ -88,10 +117,16 @@ class FileDownloadService {
       }
 
       const { showShareOptions = true, saveToDevice = true } = options;
-      
-      // Demander les permissions si nécessaire
+
+      if (saveToDevice && this.shouldUseExpoStorage()) {
+        return {
+          success: false,
+          error: 'Utilisez savePdfBlob pour télécharger un PDF en mémoire',
+        };
+      }
+
       if (saveToDevice && Platform.OS === 'android') {
-        const hasPermission = await this.requestPermissions();
+        const hasPermission = await this.requestLegacyStoragePermission();
         if (!hasPermission) {
           return {
             success: false,
@@ -143,34 +178,25 @@ class FileDownloadService {
     options: DownloadOptions = {}
   ): Promise<DownloadResult> {
     try {
-      // Vérifier si les modules natifs sont disponibles
-      if (!this.isNativeModuleAvailable()) {
-        console.log('Modules natifs non disponibles, utilisation du fallback Expo...');
+      if (!this.isNativeModuleAvailable() || this.shouldUseExpoStorage()) {
         return await this.savePdfBlobWithExpo(blob, fileName, options);
       }
 
       const { showShareOptions = true, saveToDevice = true } = options;
-      
-      // Demander les permissions si nécessaire
+
       if (saveToDevice && Platform.OS === 'android') {
-        const hasPermission = await this.requestPermissions();
+        const hasPermission = await this.requestLegacyStoragePermission();
         if (!hasPermission) {
-          return {
-            success: false,
-            error: 'Permission de stockage refusée',
-          };
+          console.log('Permission stockage refusée, fallback Expo + partage...');
+          return await this.savePdfBlobWithExpo(blob, fileName, options);
         }
       }
 
-      // Générer le nom de fichier unique
       const timestamp = new Date().getTime();
       const finalFileName = `${fileName}_${timestamp}.pdf`;
       const filePath = `${this.downloadsDir}/${finalFileName}`;
-
-      // Convertir le blob en base64
       const base64Data = await this.blobToBase64(blob);
 
-      // Sauvegarder le fichier
       await RNBlobUtil!.fs.writeFile(filePath, base64Data, 'base64');
 
       if (showShareOptions) {
@@ -183,8 +209,6 @@ class FileDownloadService {
       };
     } catch (error: any) {
       console.error('Erreur lors de la sauvegarde:', error);
-      // Essayer avec Expo en cas d'erreur
-      console.log('Erreur avec modules natifs, tentative avec Expo...');
       return await this.savePdfBlobWithExpo(blob, fileName, options);
     }
   }
@@ -301,25 +325,33 @@ class FileDownloadService {
   ): Promise<DownloadResult> {
     try {
       const { showShareOptions = true } = options;
-      
-      // Convertir le blob en base64
       const base64 = await this.blobToBase64(blob);
-      
-      // Générer le nom de fichier unique
       const timestamp = new Date().getTime();
       const finalFileName = `${fileName}_${timestamp}.pdf`;
-      
-      // Créer le fichier avec Expo FileSystem
-      const fileUri = `${FileSystem.documentDirectory}${finalFileName}`;
+      const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+
+      if (!baseDir) {
+        return {
+          success: false,
+          error: 'Répertoire de stockage indisponible',
+        };
+      }
+
+      const fileUri = `${baseDir}${finalFileName}`;
       await FileSystem.writeAsStringAsync(fileUri, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      if (showShareOptions && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Partager le reçu PDF',
-        });
+      if (showShareOptions) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Enregistrer ou partager le reçu PDF',
+            UTI: 'com.adobe.pdf',
+          });
+        } else if (this.isNativeModuleAvailable() && share) {
+          await this.showShareOptions(fileUri.replace('file://', ''), finalFileName);
+        }
       }
 
       return {

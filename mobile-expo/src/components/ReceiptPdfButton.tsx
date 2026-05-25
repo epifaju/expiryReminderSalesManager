@@ -69,7 +69,7 @@ export const ReceiptPdfButton: React.FC<ReceiptPdfButtonProps> = ({
         
         Alert.alert(
           t('receipts.downloadSuccess'),
-          `${t('receipts.pdfDownloadedSuccessfully')}\n${result.filePath}`,
+          t('receipts.pdfShareHint'),
           [{ text: t('common.ok') }]
         );
       } else {
