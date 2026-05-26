@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import authService, { User } from '../services/authService';
+import profileService from '../services/profileService';
 
 interface UserProfileScreenProps {
   onBack: () => void;
@@ -24,27 +25,36 @@ const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUserData();
+    void loadUserData();
   }, []);
 
-  const loadUserData = () => {
+  const loadUserData = async () => {
     console.log('📋 Chargement des données utilisateur...');
-    const currentUser = authService.getUser();
-    console.log('👤 Utilisateur récupéré:', currentUser);
-    
-    if (currentUser) {
-      setUser(currentUser);
-      setEditedEmail(currentUser.email);
-      setIsLoading(false);
-    } else {
-      // Vérifier si l'utilisateur est authentifié
-      const isAuth = authService.isAuthenticated();
-      console.log('🔐 Authentifié:', isAuth);
-      
-      // Si pas d'utilisateur mais authentifié, il y a un problème
-      if (isAuth) {
-        console.warn('⚠️ Utilisateur authentifié mais pas de données disponibles');
+    setIsLoading(true);
+
+    try {
+      const profile = await profileService.getProfile();
+      const mappedUser: User = {
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        roles: profile.roles,
+        preferredCurrency: profile.preferredCurrency,
+        preferredLanguage: profile.preferredLanguage,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      };
+      authService.updateLocalUser(mappedUser);
+      setUser(mappedUser);
+      setEditedEmail(mappedUser.email);
+    } catch (error) {
+      console.warn('Profil API indisponible, fallback local:', error);
+      const currentUser = authService.getUser();
+      if (currentUser) {
+        setUser(currentUser);
+        setEditedEmail(currentUser.email);
       }
+    } finally {
       setIsLoading(false);
     }
   };

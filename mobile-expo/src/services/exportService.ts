@@ -3,6 +3,11 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { Alert } from 'react-native';
 import { Sale, SaleItem, PaymentMethod } from '../types/sales';
+import { formatMoney } from '../utils/formatters';
+import { getGlobalCurrency } from '../utils/currencyStore';
+
+const formatExportAmount = (amount: number): string =>
+  formatMoney(amount, 'fr', getGlobalCurrency());
 
 interface Product {
   id: number;
@@ -88,7 +93,7 @@ export class ExportService {
     const salesData = sales.map(sale => ({
       'ID': sale.id,
       'Date': new Date(sale.saleDate).toLocaleDateString('fr-FR'),
-      'Montant Total': `${sale.totalAmount.toFixed(2)} €`,
+      'Montant Total': formatExportAmount(sale.totalAmount),
       'Méthode de Paiement': sale.paymentMethod === 'CASH' ? 'Espèces' : 
                             sale.paymentMethod === 'CARD' ? 'Carte' : 'Virement',
       'Statut': sale.status === 'COMPLETED' ? 'Terminé' : sale.status,
@@ -107,8 +112,8 @@ export class ExportService {
       'ID': product.id,
       'Nom': product.name,
       'Catégorie': product.category || 'Non catégorisé',
-      'Prix d\'achat': `${product.purchasePrice.toFixed(2)} €`,
-      'Prix de vente': `${product.sellingPrice.toFixed(2)} €`,
+      'Prix d\'achat': formatExportAmount(product.purchasePrice),
+      'Prix de vente': formatExportAmount(product.sellingPrice),
       'Stock': product.stockQuantity,
       'Marge': `${(((product.sellingPrice - product.purchasePrice) / product.sellingPrice) * 100).toFixed(1)}%`,
     }));
@@ -125,7 +130,7 @@ export class ExportService {
       'Rang': index + 1,
       'Produit': product.productName,
       'Quantité Vendue': product.totalQuantity,
-      'Chiffre d\'Affaires': `${product.totalRevenue.toFixed(2)} €`,
+      'Chiffre d\'Affaires': formatExportAmount(product.totalRevenue),
     }));
 
     const headers = ['Rang', 'Produit', 'Quantité Vendue', 'Chiffre d\'Affaires'];
@@ -285,11 +290,11 @@ export class ExportService {
             </div>
             <div class="stat-card">
               <h3>Chiffre d'Affaires</h3>
-              <p class="value">${stats.totalRevenue.toFixed(2)} €</p>
+              <p class="value">${formatExportAmount(stats.totalRevenue)}</p>
             </div>
             <div class="stat-card">
               <h3>Panier Moyen</h3>
-              <p class="value">${stats.averageOrderValue.toFixed(2)} €</p>
+              <p class="value">${formatExportAmount(stats.averageOrderValue)}</p>
             </div>
             <div class="stat-card">
               <h3>Produits Actifs</h3>
@@ -314,7 +319,7 @@ export class ExportService {
                     <td class="text-center">${index + 1}</td>
                     <td>${product.productName}</td>
                     <td class="text-right">${product.totalQuantity}</td>
-                    <td class="text-right">${product.totalRevenue.toFixed(2)} €</td>
+                    <td class="text-right">${formatExportAmount(product.totalRevenue)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -336,7 +341,7 @@ export class ExportService {
                   <tr>
                     <td>${method.method === 'CASH' ? 'Espèces' : method.method === 'CARD' ? 'Carte' : 'Virement'}</td>
                     <td class="text-right">${method.count}</td>
-                    <td class="text-right">${method.amount.toFixed(2)} €</td>
+                    <td class="text-right">${formatExportAmount(method.amount)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -348,15 +353,15 @@ export class ExportService {
             <div class="profit-analysis">
               <div class="profit-row">
                 <span>Chiffre d'affaires:</span>
-                <span>${stats.profitAnalysis.totalRevenue.toFixed(2)} €</span>
+                <span>${formatExportAmount(stats.profitAnalysis.totalRevenue)}</span>
               </div>
               <div class="profit-row">
                 <span>Coût des marchandises:</span>
-                <span>-${stats.profitAnalysis.totalCost.toFixed(2)} €</span>
+                <span>-${formatExportAmount(stats.profitAnalysis.totalCost)}</span>
               </div>
               <div class="profit-row">
                 <span>Bénéfice brut:</span>
-                <span>${stats.profitAnalysis.grossProfit.toFixed(2)} €</span>
+                <span>${formatExportAmount(stats.profitAnalysis.grossProfit)}</span>
               </div>
               <div class="profit-row">
                 <span>Marge bénéficiaire:</span>
@@ -382,7 +387,7 @@ export class ExportService {
                   <tr>
                     <td>${sale.id}</td>
                     <td>${new Date(sale.saleDate).toLocaleDateString('fr-FR')}</td>
-                    <td class="text-right">${sale.totalAmount.toFixed(2)} €</td>
+                    <td class="text-right">${formatExportAmount(sale.totalAmount)}</td>
                     <td>${sale.paymentMethod === 'CASH' ? 'Espèces' : sale.paymentMethod === 'CARD' ? 'Carte' : 'Virement'}</td>
                     <td>${sale.status === 'COMPLETED' ? 'Terminé' : sale.status}</td>
                   </tr>
@@ -495,8 +500,8 @@ export class ExportService {
           <div class="summary">
             <h3>Résumé Exécutif</h3>
             <p><strong>Nombre total de ventes:</strong> ${sales.length}</p>
-            <p><strong>Chiffre d'affaires total:</strong> ${totalRevenue.toFixed(2)} €</p>
-            <p><strong>Panier moyen:</strong> ${averageOrder.toFixed(2)} €</p>
+            <p><strong>Chiffre d'affaires total:</strong> ${formatExportAmount(totalRevenue)}</p>
+            <p><strong>Panier moyen:</strong> ${formatExportAmount(averageOrder)}</p>
           </div>
 
           <table>
@@ -514,7 +519,7 @@ export class ExportService {
                 <tr>
                   <td>${sale.id}</td>
                   <td>${new Date(sale.saleDate).toLocaleDateString('fr-FR')}</td>
-                  <td class="text-right">${sale.totalAmount.toFixed(2)} €</td>
+                  <td class="text-right">${formatExportAmount(sale.totalAmount)}</td>
                   <td>${sale.paymentMethod === 'CASH' ? 'Espèces' : sale.paymentMethod === 'CARD' ? 'Carte' : 'Virement'}</td>
                   <td>${sale.status === 'COMPLETED' ? 'Terminé' : sale.status}</td>
                 </tr>

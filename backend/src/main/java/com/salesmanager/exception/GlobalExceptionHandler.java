@@ -37,6 +37,36 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<?>> handleResourceAlreadyExists(
+            ResourceAlreadyExistsException ex,
+            Locale locale) {
+        ApiResponse<?> response = new ApiResponse<>(
+                false,
+                ex.getMessage(),
+                null,
+                locale.getLanguage());
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ApiResponse<?>> handleInvalidPassword(
+            InvalidPasswordException ex,
+            Locale locale) {
+        ApiResponse<?> response = new ApiResponse<>(
+                false,
+                ex.getMessage(),
+                null,
+                locale.getLanguage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidationErrors(
             MethodArgumentNotValidException ex,

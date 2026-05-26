@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '../contexts/CurrencyContext';
 import { Receipt } from '../services/receiptService';
 import { ReceiptPdfButton } from './ReceiptPdfButton';
 
@@ -29,6 +30,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   style,
 }) => {
   const { t, i18n } = useTranslation();
+  const { formatMoney } = useCurrency();
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString(i18n.language === 'pt' ? 'pt-PT' : i18n.language === 'cr' ? 'pt-PT' : 'fr-FR', {
@@ -40,12 +42,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(i18n.language === 'pt' ? 'pt-PT' : i18n.language === 'cr' ? 'pt-PT' : 'fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatMoney(amount);
 
   const getStatusColor = (status: string) => {
     switch (status) {

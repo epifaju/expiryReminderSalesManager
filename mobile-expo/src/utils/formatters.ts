@@ -1,16 +1,34 @@
 import { format } from 'date-fns';
 import { fr, pt } from 'date-fns/locale';
+import { DEFAULT_CURRENCY, SupportedCurrency } from '../types/currency';
+import { getGlobalCurrency } from './currencyStore';
 
-// Formatage des prix selon la locale
-export const formatPrice = (amount: number, locale: string): string => {
-  const localeConfig = locale === 'fr' ? 'fr-FR' : locale === 'pt' ? 'pt-PT' : 'fr-FR';
-  
-  const formatted = new Intl.NumberFormat(localeConfig, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-  
-  return `${formatted} CFA`;
+export const formatMoney = (
+  amount: number,
+  locale: string,
+  currencyCode: SupportedCurrency = getGlobalCurrency()
+): string => {
+  const localeConfig = getIntlLocale(locale);
+  try {
+    return new Intl.NumberFormat(localeConfig, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return new Intl.NumberFormat(localeConfig, {
+      style: 'currency',
+      currency: DEFAULT_CURRENCY,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+};
+
+// Formatage des prix selon la locale et la devise du compte
+export const formatPrice = (amount: number, locale: string, currencyCode?: SupportedCurrency): string => {
+  return formatMoney(amount, locale, currencyCode ?? getGlobalCurrency());
 };
 
 // Formatage des nombres selon la locale
@@ -58,16 +76,13 @@ export const formatPercentage = (value: number, locale: string): string => {
   }).format(value / 100);
 };
 
-// Formatage des devises (générique)
-export const formatCurrency = (amount: number, locale: string, currency: string = 'CFA'): string => {
-  const localeConfig = locale === 'fr' ? 'fr-FR' : locale === 'pt' ? 'pt-PT' : 'fr-FR';
-  
-  const formatted = new Intl.NumberFormat(localeConfig, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-  
-  return `${formatted} ${currency}`;
+// Formatage des devises (générique, code ISO)
+export const formatCurrency = (
+  amount: number,
+  locale: string,
+  currency: SupportedCurrency = getGlobalCurrency()
+): string => {
+  return formatMoney(amount, locale, currency);
 };
 
 // Formatage des quantités avec unité

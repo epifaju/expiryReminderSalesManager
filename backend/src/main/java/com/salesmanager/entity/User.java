@@ -55,6 +55,9 @@ public class User implements UserDetails {
     
     @Column(name = "preferred_language")
     private String preferredLanguage = "fr";
+
+    @Column(name = "preferred_currency", length = 3, nullable = false)
+    private String preferredCurrency = "EUR";
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -119,6 +122,8 @@ public class User implements UserDetails {
     public void setRoles(Set<Role> roles) { this.roles = roles; }
     public String getPreferredLanguage() { return preferredLanguage; }
     public void setPreferredLanguage(String preferredLanguage) { this.preferredLanguage = preferredLanguage; }
+    public String getPreferredCurrency() { return preferredCurrency; }
+    public void setPreferredCurrency(String preferredCurrency) { this.preferredCurrency = preferredCurrency; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -10,6 +10,8 @@ import HelpScreen from './HelpScreen';
 import ContactSupportScreen from './ContactSupportScreen';
 import AboutScreen from './AboutScreen';
 import BluetoothSettingsScreen from './BluetoothSettingsScreen';
+import CurrencySettingsScreen from './CurrencySettingsScreen';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -17,7 +19,9 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
   const { t } = useTranslation();
+  const { currency } = useCurrency();
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showCurrencySettings, setShowCurrencySettings] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDarkMode, setShowDarkMode] = useState(false);
@@ -83,6 +87,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
     return <BluetoothSettingsScreen onBack={() => setShowBluetoothSettings(false)} />;
   }
 
+  if (showCurrencySettings) {
+    return <CurrencySettingsScreen onBack={() => setShowCurrencySettings(false)} />;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -134,6 +142,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
           </TouchableOpacity>
           
           <LanguageSelector />
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => setShowCurrencySettings(true)}
+          >
+            <Text style={styles.settingIcon}>💱</Text>
+            <Text style={styles.settingText}>{t('currency.title')}</Text>
+            <Text style={styles.settingValue}>{currency}</Text>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingItem}
@@ -263,6 +281,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+  },
+  settingValue: {
+    fontSize: 14,
+    color: '#667eea',
+    fontWeight: '600',
+    marginRight: 8,
   },
   settingArrow: {
     fontSize: 20,

@@ -3,6 +3,9 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApiClient, updateApiClientBaseUrl, setTokenProvider } from './apiClient';
 import { getApiUrls } from '../config/apiConfig';
+import profileService from './profileService';
+import { normalizeCurrency, SupportedCurrency } from '../types/currency';
+import { persistCurrency, setGlobalCurrency, clearCurrencyCache } from '../utils/currencyStore';
 
 const API_URLS = getApiUrls();
 
@@ -23,6 +26,10 @@ export interface User {
   username: string;
   email: string;
   roles: string[];
+  preferredCurrency?: SupportedCurrency;
+  preferredLanguage?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface AuthResponse {
@@ -33,6 +40,7 @@ export interface AuthResponse {
 class AuthService {
   private token: string | null = null;
   private user: User | null = null;
+  private authListeners: Array<() => void> = [];
 
   constructor() {
     // Set up the token provider callback to break the circular dependency
@@ -51,6 +59,9 @@ class AuthService {
       if (token && userStr) {
         this.token = token;
         this.user = JSON.parse(userStr);
+        if (this.user?.preferredCurrency) {
+          setGlobalCurrency(normalizeCurrency(this.user.preferredCurrency));
+        }
         console.log('✅ Données utilisateur restaurées:', this.user?.username);
         return true;
       }
@@ -229,22 +240,34 @@ class AuthService {
       // Vérifier si les données utilisateur sont dans un objet 'user' ou au même niveau
       if (authResponse.user) {
         // Format 1: Structure avec objet user
-        this.user = authResponse.user;
+        this.user = {
+          ...authResponse.user,
+          preferredCurrency: normalizeCurrency(authResponse.user.preferredCurrency),
+        };
       } else if (authResponse.id && authResponse.username && authResponse.email) {
         // Format 2: Structure plate - construire l'objet user
         this.user = {
           id: authResponse.id,
           username: authResponse.username,
           email: authResponse.email,
-          roles: authResponse.roles || []
+          roles: authResponse.roles || [],
+          preferredCurrency: normalizeCurrency(authResponse.preferredCurrency),
+          preferredLanguage: authResponse.preferredLanguage,
         };
       } else {
         throw new Error('Format de réponse invalide - données utilisateur manquantes');
+      }
+
+      const savedUser = this.user;
+      if (savedUser?.preferredCurrency) {
+        setGlobalCurrency(savedUser.preferredCurrency);
+        await persistCurrency(savedUser.id, savedUser.preferredCurrency);
       }
       
       // Persister les données dans AsyncStorage (this.token est garanti non-null ici)
       await AsyncStorage.setItem('auth_token', this.token as string);
       await AsyncStorage.setItem('auth_user', JSON.stringify(this.user));
+      this.notifyAuthChange();
       
       console.log('💾 Token stocké avec persistance:', this.token ? `${this.token.substring(0, 20)}...` : 'ERREUR');
       console.log('👤 Utilisateur stocké avec persistance:', this.user?.username || 'ERREUR');
@@ -257,6 +280,7 @@ class AuthService {
   // Logout method with persistent storage cleanup
   async logout(): Promise<void> {
     try {
+      const userId = this.user?.id;
       // Clear memory
       this.token = null;
       this.user = null;
@@ -264,6 +288,10 @@ class AuthService {
       // Clear AsyncStorage
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('auth_user');
+      if (userId != null) {
+        await clearCurrencyCache(userId);
+      }
+      this.notifyAuthChange();
       
       console.log('✅ Déconnexion réussie - Données effacées');
     } catch (error) {
@@ -286,6 +314,25 @@ class AuthService {
   // Get current user
   getUser(): User | null {
     return this.user;
+  }
+
+  updateLocalUser(updates: Partial<User>): void {
+    if (!this.user) {
+      return;
+    }
+    this.user = { ...this.user, ...updates };
+    void AsyncStorage.setItem('auth_user', JSON.stringify(this.user));
+  }
+
+  onAuthChange(listener: () => void): () => void {
+    this.authListeners.push(listener);
+    return () => {
+      this.authListeners = this.authListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifyAuthChange(): void {
+    this.authListeners.forEach((listener) => listener());
   }
 
   // Get authorization header
@@ -339,17 +386,23 @@ class AuthService {
         throw new Error('Invalid email format');
       }
 
-      // In a real app, you would make an API call here
-      // For now, we'll update locally and persist
-      this.user.email = newEmail;
-      
-      // Persister les modifications
-      await AsyncStorage.setItem('auth_user', JSON.stringify(this.user));
-      
-      console.log('✅ Email mis à jour et persisté:', newEmail);
-    } catch (error) {
+      const profile = await profileService.updateProfile({ email: newEmail });
+      this.updateLocalUser({
+        email: profile.email,
+        preferredCurrency: profile.preferredCurrency,
+        preferredLanguage: profile.preferredLanguage,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+      });
+      console.log('✅ Email mis à jour:', newEmail);
+    } catch (error: any) {
       console.error('Error updating email:', error);
-      throw error;
+      const message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        'Unable to update profile';
+      throw new Error(message);
     }
   }
 
@@ -375,27 +428,7 @@ class AuthService {
         throw new Error('Le nouveau mot de passe doit être différent de l\'ancien');
       }
 
-      // Dans une vraie application, vous feriez un appel API ici
-      // Pour l'instant, nous simulons l'appel API
-      
-      // Simuler un délai réseau
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // TODO: Implémenter l'appel API au backend
-      // const response = await axios.post(
-      //   `${baseUrl}/auth/change-password`,
-      //   {
-      //     currentPassword,
-      //     newPassword
-      //   },
-      //   {
-      //     headers: this.getAuthHeader(),
-      //     timeout: 10000
-      //   }
-      // );
-
-      // Pour la démo, on simule le succès
-      // Note: Le mot de passe n'est pas stocké côté client pour des raisons de sécurité
+      await profileService.changePassword(currentPassword, newPassword);
       console.log('✅ Mot de passe changé avec succès');
       
       // Important: Ne pas stocker le mot de passe côté client

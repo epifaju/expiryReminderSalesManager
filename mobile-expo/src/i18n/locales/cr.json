@@ -74,6 +74,17 @@
     "version": "Verson",
     "logoutConfirm": "Bu siguru ki bu kere sai?"
   },
+  "currency": {
+    "title": "Moni",
+    "description": "Sers moni pou montre montan, exportasion é reçu PDF. Montan na base pa konverti.",
+    "changeSuccess": "Moni aktualizé",
+    "changeError": "Impossivel aktualiz moni",
+    "labels": {
+      "EUR": "Euro",
+      "USD": "Dolar amerikin",
+      "XOF": "Franc CFA (BCEAO)"
+    }
+  },
   "bluetooth": {
     "settings_title": "Scanner Bluetooth",
     "status_connected": "Konektadu",

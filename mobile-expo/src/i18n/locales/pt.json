@@ -74,6 +74,17 @@
     "version": "Versão",
     "logoutConfirm": "Tem certeza de que deseja sair?"
   },
+  "currency": {
+    "title": "Moeda",
+    "description": "Escolha a moeda de exibição para valores, exportações e recibos PDF. Os valores na base de dados não são convertidos.",
+    "changeSuccess": "Moeda atualizada",
+    "changeError": "Não foi possível atualizar a moeda",
+    "labels": {
+      "EUR": "Euro",
+      "USD": "Dólar americano",
+      "XOF": "Franco CFA (BCEAO)"
+    }
+  },
   "bluetooth": {
     "settings_title": "Scanner Bluetooth",
     "status_connected": "Conectado",

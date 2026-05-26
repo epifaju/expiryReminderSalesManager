@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { initI18n } from '../i18n';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { CurrencyProvider } from '../contexts/CurrencyContext';
 import AppContent from './AppContent';
 import scannerConnectivityCoordinator from '../services/scanner/ScannerConnectivityCoordinator';
 
@@ -45,7 +46,9 @@ export default function AppWrapper() {
 
   return (
     <ThemeProvider>
-      <AppContent />
+      <CurrencyProvider>
+        <AppContent />
+      </CurrencyProvider>
     </ThemeProvider>
   );
 }

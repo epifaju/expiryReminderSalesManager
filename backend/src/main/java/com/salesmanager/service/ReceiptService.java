@@ -138,7 +138,8 @@ public class ReceiptService {
             receiptRepository.save(receipt);
 
             // Générer le PDF avec la langue appropriée
-            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale);
+            String currencyCode = user.getPreferredCurrency() != null ? user.getPreferredCurrency() : "EUR";
+            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale, currencyCode);
 
             logger.info("PDF généré avec succès pour le reçu: {}. Taille: {} bytes",
                     receipt.getReceiptNumber(), pdfBytes.length);
@@ -171,7 +172,8 @@ public class ReceiptService {
             receiptRepository.save(receipt);
 
             // Générer le PDF avec la langue appropriée
-            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale);
+            String currencyCode = user.getPreferredCurrency() != null ? user.getPreferredCurrency() : "EUR";
+            byte[] pdfBytes = receiptPdfService.generatePdf(receipt, locale, currencyCode);
 
             logger.info("PDF généré avec succès pour le reçu: {}. Taille: {} bytes",
                     receipt.getReceiptNumber(), pdfBytes.length);

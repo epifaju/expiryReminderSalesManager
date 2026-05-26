@@ -55,12 +55,15 @@ public class AuthController {
                 .map(item -> item.getAuthority())
                 .toList();
         
+        var user = userDetails.getUser();
         return ResponseEntity.ok(new JwtResponse(
                 jwt,
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
-                roles));
+                roles,
+                user.getPreferredLanguage(),
+                user.getPreferredCurrency()));
     }
 
     @PostMapping("/signup")

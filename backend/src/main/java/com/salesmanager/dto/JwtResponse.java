@@ -7,5 +7,7 @@ public record JwtResponse(
     Long id,
     String username,
     String email,
-    List<String> roles
+    List<String> roles,
+    String preferredLanguage,
+    String preferredCurrency
 ) {}
