@@ -98,6 +98,13 @@ async function migration003(): Promise<void> {
   `);
 }
 
+/** Migration 004 — colonne category pour pré-remplissage modal. */
+async function migration004(): Promise<void> {
+  if (!(await columnExists('products', 'category'))) {
+    await DatabaseService.executeSql(`ALTER TABLE products ADD COLUMN category TEXT`);
+  }
+}
+
 /**
  * Applique les migrations scanner (idempotentes). N'altère pas DatabaseService.
  */
@@ -127,6 +134,12 @@ export async function applyScannerSqlMigrations(): Promise<void> {
   if (version < 3) {
     await migration003();
     version = 3;
+    await setAppliedVersion(version);
+  }
+
+  if (version < 4) {
+    await migration004();
+    version = 4;
     await setAppliedVersion(version);
   }
 

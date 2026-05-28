@@ -7,19 +7,19 @@ const LAN_HOST = process.env.EXPO_PUBLIC_API_HOST ?? '192.168.1.17';
 export const getApiUrls = (): string[] => {
   if (Platform.OS === 'web') {
     return [
-      'http://localhost:8083',
       'http://localhost:8082',
+      'http://localhost:8083',
     ];
   }
 
   return [
-    `http://${LAN_HOST}:8083`,
     `http://${LAN_HOST}:8082`,
-    'http://10.0.2.2:8083',
+    `http://${LAN_HOST}:8083`,
     'http://10.0.2.2:8082',
-    'http://localhost:8083',
+    'http://10.0.2.2:8083',
     'http://localhost:8082',
-    'http://127.0.0.1:8083',
+    'http://localhost:8083',
     'http://127.0.0.1:8082',
+    'http://127.0.0.1:8083',
   ];
 };

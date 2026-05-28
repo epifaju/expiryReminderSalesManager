@@ -55,8 +55,7 @@ public class SaleService {
         
         // Process sale items
         for (SaleItemRequest itemRequest : saleRequest.getSaleItems()) {
-            Product product = productRepository.findById(itemRequest.getProductId())
-                .orElseThrow(() -> new ProductNotFoundException("Product not found with id: " + itemRequest.getProductId()));
+            Product product = resolveProduct(itemRequest);
             
             // Check stock availability
             if (product.getStockQuantity() < itemRequest.getQuantity()) {
@@ -85,6 +84,32 @@ public class SaleService {
         Sale savedSale = saleRepository.save(sale);
         
         return convertToResponse(savedSale);
+    }
+
+    private Product resolveProduct(SaleItemRequest itemRequest) {
+        Long productId = itemRequest.getProductId();
+        if (productId != null) {
+            Optional<Product> byId = productRepository.findById(productId);
+            if (byId.isPresent()) {
+                return byId.get();
+            }
+        }
+
+        String barcode = itemRequest.getBarcode();
+        if (barcode != null && !barcode.isBlank()) {
+            Optional<Product> byBarcode = productRepository.findByBarcode(barcode.trim());
+            if (byBarcode.isPresent()) {
+                return byBarcode.get();
+            }
+        }
+
+        if (productId == null && (barcode == null || barcode.isBlank())) {
+            throw new ProductNotFoundException("Product reference is required (productId or barcode)");
+        }
+
+        throw new ProductNotFoundException(
+            "Product not found (id=" + productId + ", barcode=" + (barcode == null ? "null" : "'" + barcode + "'") + ")"
+        );
     }
     
     public SaleResponse getSaleById(Long id) {

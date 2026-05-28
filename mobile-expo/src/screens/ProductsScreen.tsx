@@ -54,6 +54,9 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [unknownBarcode, setUnknownBarcode] = useState('');
   const [showUnknownModal, setShowUnknownModal] = useState(false);
+  const [unknownPrefill, setUnknownPrefill] = useState<
+    Partial<QuickProductFormData> | null
+  >(null);
   const productsRef = useRef(products);
   productsRef.current = products;
 
@@ -135,8 +138,24 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
     [findCatalogProductByBarcode]
   );
 
-  const openUnknownProductModal = useCallback((barcode: string) => {
+  const openUnknownProductModal = useCallback(async (barcode: string) => {
     setUnknownBarcode(barcode);
+    try {
+      const user = authService.getUser();
+      const local = await productDAO.findByBarcode(barcode, user ? String(user.id) : undefined);
+      if (local) {
+        setUnknownPrefill({
+          name: local.name,
+          sellingPrice: Number(local.price),
+          stockQuantity: Number(local.stock_quantity ?? 1),
+          expiryDate: local.expiration_date ?? undefined,
+        });
+      } else {
+        setUnknownPrefill(null);
+      }
+    } catch {
+      setUnknownPrefill(null);
+    }
     setShowUnknownModal(true);
   }, []);
 
@@ -184,7 +203,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
 
       void playScanNotFoundFeedback();
       if (screenMode === 'add') {
-        openUnknownProductModal(barcode);
+        void openUnknownProductModal(barcode);
       } else if (screenMode === 'edit') {
         setFormValues((prev) => ({ ...prev, barcode }));
       }
@@ -288,19 +307,27 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
 
     try {
       await createQuickProduct(data, String(user.id));
-      setShowUnknownModal(false);
-      setUnknownBarcode('');
 
       if (NetworkService.isOnline()) {
-        await pendingProductSyncService.syncAll();
+        const syncResult = await pendingProductSyncService.syncAll();
+        if (syncResult.failed > 0) {
+          const conflict = syncResult.errors.find(
+            (e) => e.includes('Erreur 409') || e.toLowerCase().includes('code-barres existe déjà')
+          );
+          if (conflict) {
+            throw new Error(conflict.replace(/^[^:]+:\s*/, ''));
+          }
+        }
       }
       await loadProducts();
 
+      setShowUnknownModal(false);
+      setUnknownBarcode('');
       Alert.alert(t('common.success'), t('bluetooth.product_created'));
       goToList();
     } catch (error) {
       console.error('Erreur création produit rapide:', error);
-      Alert.alert(t('common.error'), t('errors.unknownError'));
+      // Les erreurs (409 code-barres, etc.) sont gérées dans le modal.
     }
   };
 
@@ -517,10 +544,12 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
         <UnknownBarcodeModal
           visible={showUnknownModal}
           barcode={unknownBarcode}
+          prefill={unknownPrefill ?? undefined}
           onCreateProduct={handleQuickCreateProduct}
           onDismiss={() => {
             setShowUnknownModal(false);
             setUnknownBarcode('');
+            setUnknownPrefill(null);
           }}
         />
       </View>

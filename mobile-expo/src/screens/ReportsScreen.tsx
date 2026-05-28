@@ -234,7 +234,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
 
     switch (period) {
       case 'today':
-        startDate.setHours(0, 0, 0, 0);
+        // Utiliser UTC pour rester cohérent avec les dates ISO "...Z" renvoyées par l'API.
+        startDate.setUTCHours(0, 0, 0, 0);
         break;
       case 'week':
         startDate.setDate(now.getDate() - 7);
@@ -250,6 +251,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     return salesData.filter(sale => new Date(sale.saleDate) >= startDate);
   };
 
+  const utcDayKey = (d: Date) => {
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const generatePeriodData = (salesData: Sale[], period: string) => {
     const data = [];
     const now = new Date();
@@ -257,17 +265,22 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ token }) => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(now.getDate() - i);
-      const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+      const dateStr = date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        timeZone: 'UTC',
+      });
+      const key = utcDayKey(date);
       
       const daySales = salesData.filter(sale => {
         const saleDate = new Date(sale.saleDate);
-        return saleDate.toDateString() === date.toDateString();
+        return utcDayKey(saleDate) === key;
       });
 
       data.push({
         period: dateStr,
         sales: daySales.length,
-        revenue: daySales.reduce((sum, sale) => sum + sale.totalAmount, 0),
+        revenue: daySales.reduce((sum, sale) => sum + (sale.finalAmount || sale.totalAmount), 0),
       });
     }
 

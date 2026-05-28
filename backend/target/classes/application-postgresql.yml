@@ -1,10 +1,10 @@
 server:
-  port: 8080
+  port: 8082
   address: 0.0.0.0
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/salesmanager
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:salesmanager}
     username: ${DB_USERNAME:salesmanager}
     password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
@@ -12,8 +12,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 2
+    baseline-on-migrate: false
     validate-on-migrate: true
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

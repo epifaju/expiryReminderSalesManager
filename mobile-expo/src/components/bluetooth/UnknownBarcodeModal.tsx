@@ -26,6 +26,7 @@ export interface QuickProductFormData {
 interface UnknownBarcodeModalProps {
   visible: boolean;
   barcode: string;
+  prefill?: Partial<Omit<QuickProductFormData, 'barcode'>>;
   onCreateProduct: (data: QuickProductFormData) => Promise<void>;
   onDismiss: () => void;
 }
@@ -33,6 +34,7 @@ interface UnknownBarcodeModalProps {
 const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
   visible,
   barcode,
+  prefill,
   onCreateProduct,
   onDismiss,
 }) => {
@@ -43,20 +45,38 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
   const [category, setCategory] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [barcodeValue, setBarcodeValue] = useState('');
+  const [barcodeEditable, setBarcodeEditable] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setName('');
-      setSellingPrice('');
-      setStockQuantity('1');
-      setCategory('');
-      setExpiryDate('');
+      setName(prefill?.name ?? '');
+      setSellingPrice(
+        prefill?.sellingPrice !== undefined && prefill?.sellingPrice !== null
+          ? String(prefill.sellingPrice)
+          : ''
+      );
+      setStockQuantity(
+        prefill?.stockQuantity !== undefined && prefill?.stockQuantity !== null
+          ? String(prefill.stockQuantity)
+          : '1'
+      );
+      setCategory(prefill?.category ?? '');
+      setExpiryDate(prefill?.expiryDate ?? '');
       setSubmitting(false);
+      setBarcodeValue(barcode);
+      setBarcodeEditable(false);
+      setSubmitError(null);
     }
-  }, [visible, barcode]);
+  }, [visible, barcode, prefill]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
+      return;
+    }
+    const normalizedBarcode = barcodeValue.trim();
+    if (!normalizedBarcode) {
       return;
     }
     const price = parseFloat(sellingPrice);
@@ -66,15 +86,31 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
     }
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       await onCreateProduct({
-        barcode,
+        barcode: normalizedBarcode,
         name: name.trim(),
         sellingPrice: price,
         stockQuantity: stock,
         expiryDate: expiryDate || undefined,
         category: category.trim() || undefined,
       });
+    } catch (e: any) {
+      const message = String(e?.message || '');
+      // Cas fréquent: 409 quand un produit avec ce code-barres existe déjà côté API.
+      if (message.includes('Erreur 409') || message.toLowerCase().includes('code-barres existe déjà')) {
+        setBarcodeEditable(true);
+        setSubmitError(
+          message.replace(/^Erreur\s*409:\s*/i, '') ||
+            t('bluetooth.barcode_already_exists')
+        );
+      } else {
+        setSubmitError(message || t('errors.unknownError'));
+      }
+      // Important: ne pas propager l'erreur, on reste dans le modal
+      // pour permettre à l'utilisateur de corriger (ex: nouveau code-barres).
+      return;
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +128,25 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
 
           <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.label}>{t('products.barcode')}</Text>
-            <TextInput style={[styles.input, styles.readonly]} value={barcode} editable={false} />
+            <TextInput
+              style={[styles.input, !barcodeEditable && styles.readonly]}
+              value={barcodeValue}
+              editable={barcodeEditable}
+              onChangeText={setBarcodeValue}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder={t('products.barcode')}
+            />
+            {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+            {!barcodeEditable ? (
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => setBarcodeEditable(true)}
+                disabled={submitting}
+              >
+                <Text style={styles.linkButtonText}>{t('bluetooth.use_different_barcode')}</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <Text style={styles.label}>{t('products.productName')} *</Text>
             <TextInput
@@ -198,6 +252,20 @@ const styles = StyleSheet.create({
   readonly: {
     backgroundColor: '#f5f5f5',
     color: '#666',
+  },
+  errorText: {
+    color: '#dc3545',
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  linkButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  linkButtonText: {
+    color: '#007bff',
+    fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',

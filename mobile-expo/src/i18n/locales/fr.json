@@ -103,6 +103,8 @@
     "scan_suffix": "Suffixe scan",
     "product_not_found": "Produit inconnu",
     "create_product_prompt": "Ce code-barres n'existe pas. Créer le produit ?",
+    "use_different_barcode": "Utiliser un autre code-barres",
+    "barcode_already_exists": "Ce code-barres existe déjà. Veuillez en saisir un autre.",
     "scan_success": "Produit ajouté",
     "permission_denied": "Permission Bluetooth refusée",
     "permission_denied_bt": "Bluetooth « Appareils à proximité » non autorisé (la localisation seule ne suffit pas).",

@@ -20,11 +20,13 @@ interface Product {
   stockQuantity: number;
   category: string;
   unit: string;
+  barcode?: string;
 }
 
 interface SaleItem {
   productId: number;
   productName: string;
+  barcode?: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -36,7 +38,7 @@ interface NewSaleFormProps {
     customerName: string;
     paymentMethod: string;
     saleItems: SaleItem[];
-  }) => void;
+  }) => Promise<void>;
   preselectedProduct?: Product | null;
   /** Produit à ajouter au panier (scanner Bluetooth) — quantité 1 */
   pendingCartProduct?: Product | null;
@@ -187,6 +189,7 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
           {
             productId: product.id,
             productName: product.name,
+            barcode: product.barcode,
             quantity: qty,
             unitPrice: product.sellingPrice,
             totalPrice: qty * product.sellingPrice,
@@ -264,23 +267,27 @@ const NewSaleForm: React.FC<NewSaleFormProps> = ({
     return saleItems.reduce((total, item) => total + item.totalPrice, 0);
   };
 
-  const handleCreateSale = () => {
+  const handleCreateSale = async () => {
     if (saleItems.length === 0) {
       Alert.alert(t('errors.title'), t('sales.addAtLeastOneProduct'));
       return;
     }
 
-    onCreateSale({
-      customerName,
-      paymentMethod,
-      saleItems
-    });
+    try {
+      await onCreateSale({
+        customerName,
+        paymentMethod,
+        saleItems,
+      });
 
-    // Reset form
-    setSaleItems([]);
-    setQuantityDrafts({});
-    setCustomerName('');
-    setPaymentMethod('CASH');
+      // Reset form (uniquement si succès)
+      setSaleItems([]);
+      setQuantityDrafts({});
+      setCustomerName('');
+      setPaymentMethod('CASH');
+    } catch {
+      // L'écran parent gère déjà les erreurs (modal produit inconnu, alert, etc.)
+    }
   };
 
 

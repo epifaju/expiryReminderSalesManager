@@ -103,6 +103,8 @@
     "scan_suffix": "Sufiksu skaneamentu",
     "product_not_found": "Produtu diskonxedu",
     "create_product_prompt": "Es kodigu di barra ka ten. Kria produtu?",
+    "use_different_barcode": "Uza otu kodigu di barra",
+    "barcode_already_exists": "Es kodigu di barra ja ten. Pone otu.",
     "scan_success": "Produtu aumentadu",
     "permission_denied": "Permison Bluetooth negadu",
     "permission_denied_bt": "Bluetooth « Dispositiv pertu » ka autoriza.",

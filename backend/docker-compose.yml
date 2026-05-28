@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: expiryreminder-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: salesmanager
+      POSTGRES_USER: salesmanager
+      POSTGRES_PASSWORD: password
+    ports:
+      # If you already have PostgreSQL on your machine, stop it
+      # or change the left port (e.g. "15432:5432").
+      - "15432:5432"
+    volumes:
+      - salesmanager_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salesmanager -d salesmanager"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: expiryreminder-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.test
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  salesmanager_pgdata:

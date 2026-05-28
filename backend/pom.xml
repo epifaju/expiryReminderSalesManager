@@ -151,9 +151,13 @@
                     <locations>
                         <location>filesystem:src/main/resources/db/migration</location>
                     </locations>
-                    <baselineOnMigrate>true</baselineOnMigrate>
-                    <baselineVersion>2</baselineVersion>
+                    <baselineOnMigrate>false</baselineOnMigrate>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.3.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

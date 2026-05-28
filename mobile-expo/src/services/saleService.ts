@@ -69,7 +69,10 @@ export interface SaleResponse {
 }
 
 export interface SaleItemRequest {
-  productId: number;
+  /** ID produit côté backend (optionnel si barcode fourni) */
+  productId?: number;
+  /** Code-barres pour résolution côté backend */
+  barcode?: string;
   quantity: number;
   unitPrice: number;
   discount?: number;
@@ -123,6 +126,7 @@ class SaleService {
         // Ensure saleItems is not empty and properly formatted
         saleItems: saleData.saleItems.map(item => ({
           productId: item.productId,
+          barcode: item.barcode,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discount: item.discount || 0

@@ -151,6 +151,7 @@ export class ProductDAO {
       const product: LocalProduct = {
         ...this.mapRowToProduct(row),
         barcode: row.barcode ?? null,
+        category: row.category ?? null,
       };
 
       console.log('[ProductDAO] Produit trouvé par code-barres:', product.name);

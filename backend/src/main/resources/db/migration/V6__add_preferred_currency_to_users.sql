@@ -1,2 +1,2 @@
 ALTER TABLE users
-    ADD COLUMN preferred_currency VARCHAR(3) NOT NULL DEFAULT 'EUR';
+    ADD COLUMN IF NOT EXISTS preferred_currency VARCHAR(3) NOT NULL DEFAULT 'EUR';

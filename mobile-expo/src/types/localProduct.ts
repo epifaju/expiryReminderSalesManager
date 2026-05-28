@@ -5,4 +5,5 @@ import { Product } from './models';
  */
 export interface LocalProduct extends Product {
   barcode?: string | null;
+  category?: string | null;
 }

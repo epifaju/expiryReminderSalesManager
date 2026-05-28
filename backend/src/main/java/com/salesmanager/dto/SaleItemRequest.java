@@ -2,20 +2,26 @@ package com.salesmanager.dto;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
 public class SaleItemRequest {
     
-    @NotNull(message = "Product ID is required")
     private Long productId;
+
+    /**
+     * Optionnel: permet de retrouver le produit quand l'ID côté client ne correspond pas à l'ID backend
+     * (cas fréquent quand le mobile utilise un id SQLite local).
+     */
+    @Size(max = 50, message = "Barcode must be at most 50 characters")
+    private String barcode;
     
-    @NotNull(message = "Quantity is required")
+    @jakarta.validation.constraints.NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")
     private Integer quantity;
     
-    @NotNull(message = "Unit price is required")
+    @jakarta.validation.constraints.NotNull(message = "Unit price is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Unit price must be greater than 0")
     private BigDecimal unitPrice;
     
@@ -45,6 +51,14 @@ public class SaleItemRequest {
     
     public void setProductId(Long productId) {
         this.productId = productId;
+    }
+
+    public String getBarcode() {
+        return barcode;
+    }
+
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
     }
     
     public Integer getQuantity() {

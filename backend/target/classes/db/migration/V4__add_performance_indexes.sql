@@ -77,7 +77,7 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_sale
 
 -- Index pour tracking des produits vendus
 CREATE INDEX IF NOT EXISTS idx_sale_items_product 
-    ON sale_items(product_id, created_at DESC);
+    ON sale_items(product_id);
 
 -- ============================================================================
 -- INDEX SUR TABLE STOCK_MOVEMENTS
@@ -126,8 +126,8 @@ CREATE INDEX IF NOT EXISTS idx_users_email
 
 -- Index pour utilisateurs actifs
 CREATE INDEX IF NOT EXISTS idx_users_active 
-    ON users(is_active, created_at DESC) 
-    WHERE is_active = true;
+    ON users(enabled, created_at DESC) 
+    WHERE enabled = true;
 
 -- ============================================================================
 -- INDEX SUR TABLE RECEIPTS (Si existe)

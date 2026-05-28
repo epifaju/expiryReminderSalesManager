@@ -11,6 +11,7 @@ import com.salesmanager.repository.SaleRepository;
 import com.salesmanager.repository.SaleItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Component
+@Profile("dev")
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired

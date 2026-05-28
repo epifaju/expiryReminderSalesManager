@@ -5,19 +5,17 @@
 - **Dépendance** : `flyway-core` (Spring Boot 3.2 exécute Flyway au démarrage si activé)
 - **Scripts** : `src/main/resources/db/migration/`
 - **Profil `postgresql`** : Flyway activé (`application-postgresql.yml`)
-- **Profils `default` (H2) et `test`** : Flyway désactivé (schéma géré par Hibernate `create-drop`)
+- **Profil `h2`** : Flyway désactivé (schéma géré par Hibernate `update` sur un fichier H2)
+- **Profil `test`** : Flyway désactivé (schéma géré par Hibernate `create-drop`)
 
 ### Paramètres Flyway (PostgreSQL)
 
 | Propriété | Valeur |
 |-----------|--------|
-| `spring.flyway.baseline-on-migrate` | `true` |
-| `spring.flyway.baseline-version` | `2` |
+| `spring.flyway.baseline-on-migrate` | `false` |
 | `spring.jpa.hibernate.ddl-auto` | `none` |
 
-Sur une base **déjà créée par Hibernate**, Flyway enregistre un baseline en version **2**, puis applique **V3 → V4 → V5** (dont `V5__add_barcode_to_products.sql`).
-
-Sur une base **vide**, créer d’abord le schéma (démarrage unique avec `ddl-auto=update`, ou scripts manuels), puis relancer avec Flyway.
+Sur une base **vide**, Flyway crée le schéma complet via **V1**, puis applique V2 → V6.
 
 ## Exécuter les migrations
 
@@ -57,13 +55,15 @@ mvn flyway:info -Ppostgresql -Dflyway.user=... -Dflyway.password=...
 
 | Version | Fichier | Description |
 |---------|---------|-------------|
-| V1–V2 | baseline | No-op (schéma legacy Hibernate) |
+| V1 | init schema | Schéma initial PostgreSQL (tables métier) |
+| V2 | baseline continue | No-op (réservé compat legacy) |
 | V3 | `add_sync_conflicts_table` | Table `sync_conflicts` |
 | V4 | `add_performance_indexes` | Index + colonne `barcode` si absente |
 | V5 | `add_barcode_to_products` | Colonne `barcode` + index unique |
+| V6 | `add_preferred_currency_to_users` | Colonne `preferred_currency` |
 
 ## Dépannage
 
 - **Authentification PostgreSQL refusée** : ajuster `DB_USERNAME` / `DB_PASSWORD` ou les options `-Dflyway.user` / `-Dflyway.password`.
-- **Table `users` introuvable** sur base vide : la base doit déjà contenir le schéma métier avant V3, ou utiliser `baseline-version` adapté après création manuelle des tables.
+- **Port PostgreSQL déjà utilisé** : modifier le mapping dans `backend/docker-compose.yml`.
 - **H2 / tests** : Flyway reste désactivé ; les tests JUnit utilisent Hibernate `create-drop`.

@@ -103,6 +103,8 @@
     "scan_suffix": "Sufixo de leitura",
     "product_not_found": "Produto desconhecido",
     "create_product_prompt": "Este código de barras não existe. Criar o produto?",
+    "use_different_barcode": "Usar outro código de barras",
+    "barcode_already_exists": "Este código de barras já existe. Introduza outro.",
     "scan_success": "Produto adicionado",
     "permission_denied": "Permissão Bluetooth negada",
     "permission_denied_bt": "Bluetooth « Dispositivos próximos » não autorizado.",

@@ -45,6 +45,7 @@ interface Product {
 interface SaleItem {
   productId: number;
   productName: string;
+  barcode?: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -86,6 +87,9 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [unknownBarcode, setUnknownBarcode] = useState('');
   const [showUnknownModal, setShowUnknownModal] = useState(false);
+  const [unknownPrefill, setUnknownPrefill] = useState<
+    Partial<QuickProductFormData> | null
+  >(null);
   const [pendingCartProduct, setPendingCartProduct] = useState<Product | null>(null);
   const productsRef = useRef(products);
   productsRef.current = products;
@@ -96,6 +100,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
   const dismissUnknownModal = useCallback(() => {
     setShowUnknownModal(false);
     setUnknownBarcode('');
+    setUnknownPrefill(null);
   }, []);
 
   const addToCartAndNotify = useCallback(
@@ -108,7 +113,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     [dismissUnknownModal, t]
   );
 
-  const openUnknownProductModal = useCallback((barcode: string) => {
+  const openUnknownProductModal = useCallback(async (barcode: string) => {
     const trimmed = normalizeBarcode(barcode);
     const recentSuccess = lastSaleSuccessRef.current;
     if (
@@ -130,6 +135,23 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     console.log('[SalesScreen] Produit inconnu, ouverture modal:', trimmed);
     setActiveTab('new');
     setUnknownBarcode(trimmed);
+    try {
+      const user = authService.getUser();
+      const local = await productDAO.findByBarcode(trimmed, user ? String(user.id) : undefined);
+      if (local) {
+        setUnknownPrefill({
+          name: local.name,
+          sellingPrice: Number(local.price),
+          stockQuantity: Number(local.stock_quantity ?? 1),
+          expiryDate: local.expiration_date ?? undefined,
+          category: local.category ?? undefined,
+        });
+      } else {
+        setUnknownPrefill(null);
+      }
+    } catch (e) {
+      setUnknownPrefill(null);
+    }
     setShowUnknownModal(true);
   }, [addToCartAndNotify]);
 
@@ -184,51 +206,16 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         return;
       }
 
-      let local: LocalProduct | null = localHint;
-      if (!local) {
-        try {
-          await applyScannerSqlMigrations();
-          const user = authService.getUser();
-          local = await productDAO.findByBarcode(
-            trimmed,
-            user ? String(user.id) : undefined
-          );
-        } catch (error) {
-          console.error('[SalesScreen] Erreur recherche locale:', error);
-        }
-      }
-
-      if (local) {
-        let saleProduct =
-          resolveSaleProductFromLocal(local, catalog) ??
-          catalog.find((p) => p.barcode?.trim() === trimmed) ??
-          null;
-
-        if (!saleProduct?.id && NetworkService.isOnline()) {
-          await pendingProductSyncService.syncAll();
-          catalog = await loadProducts();
-          productsRef.current = catalog;
-          saleProduct =
-            resolveSaleProductFromLocal(local, catalog) ??
-            catalog.find((p) => p.barcode?.trim() === trimmed) ??
-            null;
-        }
-
-        if (saleProduct?.id) {
-          void playScanSuccessFeedback();
-          lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
-          addToCartAndNotify(saleProduct as Product);
-          return;
-        }
-
-        void playScanSuccessFeedback();
-        dismissUnknownModal();
-        Alert.alert(t('bluetooth.local_pending_title'), t('bluetooth.local_pending_message'));
-        return;
-      }
-
+      /**
+       * Règle POS:
+       * - Pour une vente, la "liste des produits" fait foi (catalogue backend).
+       * - Si le produit n'existe pas encore côté backend, on ouvre immédiatement le modal
+       *   "Produit inconnu" (même s'il existe en SQLite local).
+       *
+       * Ça évite le flux actuel où l'erreur 400 n'apparaît qu'au moment du POST /sales.
+       */
       void playScanNotFoundFeedback();
-      openUnknownProductModal(trimmed);
+      void openUnknownProductModal(trimmed);
     },
     [addToCartAndNotify, dismissUnknownModal, loadProducts, openUnknownProductModal, t]
   );
@@ -318,14 +305,23 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
 
     try {
       const local = await createQuickProduct(data, String(user.id));
-      setShowUnknownModal(false);
-      setUnknownBarcode('');
+      // Ne ferme pas le modal tant que la sync n'a pas réussi (sinon en cas de 409
+      // on perd le contexte et on affiche une erreur globale).
 
       let catalog = await loadProducts();
       let saleProduct = resolveSaleProductFromLocal(local, catalog);
 
       if (NetworkService.isOnline()) {
         const syncResult = await pendingProductSyncService.syncAll();
+        if (syncResult.failed > 0) {
+          const conflict = syncResult.errors.find(
+            (e) => e.includes('Erreur 409') || e.toLowerCase().includes('code-barres existe déjà')
+          );
+          if (conflict) {
+            // Propagé au modal "Produit inconnu" qui proposera un nouveau code-barres.
+            throw new Error(conflict.replace(/^[^:]+:\s*/, ''));
+          }
+        }
         if (syncResult.synced > 0) {
           catalog = await loadProducts();
           saleProduct = resolveSaleProductFromLocal(local, catalog);
@@ -334,6 +330,8 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
 
       const addedToCart = Boolean(saleProduct?.id);
       if (addedToCart && saleProduct) {
+        setShowUnknownModal(false);
+        setUnknownBarcode('');
         dismissUnknownModal();
         setActiveTab('new');
         setPendingCartProduct(saleProduct as Product);
@@ -345,7 +343,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       );
     } catch (error) {
       console.error('Erreur création produit rapide:', error);
-      Alert.alert(t('common.error'), t('errors.unknownError'));
+      // Les erreurs (409 code-barres, etc.) sont gérées dans le modal.
     }
   };
 
@@ -372,6 +370,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         saleDate: new Date().toISOString(),
         saleItems: saleData.saleItems.map(item => ({
           productId: item.productId,
+          barcode: item.barcode,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           discount: 0
@@ -387,8 +386,18 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       loadSales();
       loadProducts();
       setScannedProduct(null); // Réinitialiser le produit scanné
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la création de la vente:', error);
+      const message = String(error?.message || '');
+      if (message.includes('Product not found')) {
+        const match = message.match(/barcode='([^']+)'/);
+        const fallbackBarcode = saleData.saleItems.find((i) => i.barcode)?.barcode;
+        const barcode = match?.[1] || fallbackBarcode || '';
+        if (barcode) {
+          void openUnknownProductModal(barcode);
+          return;
+        }
+      }
       Alert.alert(t('common.error'), t('sales.saleError'));
     }
   };
@@ -611,10 +620,12 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       <UnknownBarcodeModal
         visible={showUnknownModal}
         barcode={unknownBarcode}
+        prefill={unknownPrefill ?? undefined}
         onCreateProduct={handleQuickCreateProduct}
         onDismiss={() => {
           setShowUnknownModal(false);
           setUnknownBarcode('');
+          setUnknownPrefill(null);
         }}
       />
 
