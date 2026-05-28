@@ -72,7 +72,17 @@
     "contactSupport": "Contatar suporte",
     "about": "Sobre",
     "version": "Versão",
-    "logoutConfirm": "Tem certeza de que deseja sair?"
+    "logoutConfirm": "Tem certeza de que deseja sair?",
+    "organisationStore": "Organização e loja",
+    "organisation": "Organização",
+    "store": "Loja",
+    "currentSelection": "Seleção atual",
+    "refresh": "Atualizar",
+    "noStores": "Nenhuma loja disponível para esta organização.",
+    "noOrganisations": "Nenhuma organização disponível para a sua conta.",
+    "storeCreatedAndSelected": "Loja « {{name}} » criada e selecionada como contexto ativo.",
+    "storeCreatedSelectManually": "Loja « {{name}} » criada. Selecione-a em Organização e loja.",
+    "saved": "Salvo"
   },
   "currency": {
     "title": "Moeda",
@@ -206,6 +216,7 @@
     "tapForDetail": "Toque para ver detalhes",
     "local_pending_title": "Produto à espera de sincronização",
     "local_pending_message": "Este código de barras já existe neste dispositivo mas ainda não está no servidor. Sincronize para o utilizar em todo o lado.",
+    "localOnlyListBadge": "No dispositivo · sync pendente",
     "syncNow": "Sincronizar agora",
     "syncSuccess": "Produto sincronizado com o servidor",
     "syncFailed": "Falha na sincronização. Verifique a Internet e se o backend está em execução.",
@@ -430,6 +441,8 @@
     "connectionError": "Impossível conectar ao servidor",
     "timeoutError": "O servidor está demorando muito para responder. Verifique sua conexão de rede.",
     "authFailed": "Nome de usuário ou senha incorretos",
+    "sessionExpired": "Sua sessão expirou. Por favor, faça login novamente.",
+    "accessDenied": "Acesso negado. Você não tem permissão para esta organização.",
     "serverUnavailable": "Erro do servidor. Tente novamente mais tarde.",
     "networkUnavailable": "Erro de rede. Verifique sua conexão com a internet e se o servidor backend está rodando.",
     "serverConnection": "Impossível conectar ao servidor. Certifique-se de que:\n\n• O servidor backend está rodando\n• Sua conexão de rede funciona\n• O emulador pode acessar a rede"

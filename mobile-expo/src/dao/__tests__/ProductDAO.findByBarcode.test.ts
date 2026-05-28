@@ -50,8 +50,8 @@ describe('ProductDAO.findByBarcode', () => {
     const product = await productDAO.findByBarcode('5901234123457', 'user-1');
 
     expect(mockExecuteSql).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE barcode = ?'),
-      ['5901234123457', 'user-1']
+      expect.stringContaining('WHERE barcode = ? AND is_deleted = 0'),
+      ['5901234123457']
     );
     expect(product).toMatchObject({
       id: 'uuid-1',

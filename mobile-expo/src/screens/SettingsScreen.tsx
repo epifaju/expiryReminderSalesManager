@@ -11,7 +11,10 @@ import ContactSupportScreen from './ContactSupportScreen';
 import AboutScreen from './AboutScreen';
 import BluetoothSettingsScreen from './BluetoothSettingsScreen';
 import CurrencySettingsScreen from './CurrencySettingsScreen';
+import TenantSelectionScreen from './TenantSelectionScreen';
+import AdminTenantManagementScreen from './AdminTenantManagementScreen';
 import { useCurrency } from '../contexts/CurrencyContext';
+import authService from '../services/authService';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -29,6 +32,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
   const [showContactSupport, setShowContactSupport] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showBluetoothSettings, setShowBluetoothSettings] = useState(false);
+  const [showTenantSelection, setShowTenantSelection] = useState(false);
+  const [showAdminTenancy, setShowAdminTenancy] = useState(false);
+
+  const isAdmin =
+    authService
+      .getUser()
+      ?.roles?.some((role) => role === 'ROLE_ADMIN' || role === 'ADMIN' || role === 'ROLE_PLATFORM_ADMIN') ?? false;
   
   const handleLogout = () => {
     Alert.alert(
@@ -91,6 +101,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
     return <CurrencySettingsScreen onBack={() => setShowCurrencySettings(false)} />;
   }
 
+  if (showTenantSelection) {
+    return <TenantSelectionScreen onBack={() => setShowTenantSelection(false)} />;
+  }
+
+  if (showAdminTenancy) {
+    return <AdminTenantManagementScreen onBack={() => setShowAdminTenancy(false)} />;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -123,6 +141,26 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.application')}</Text>
           
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => setShowTenantSelection(true)}
+          >
+            <Text style={styles.settingIcon}>🏪</Text>
+            <Text style={styles.settingText}>{t('settings.organisationStore')}</Text>
+            <Text style={styles.settingArrow}>›</Text>
+          </TouchableOpacity>
+
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={() => setShowAdminTenancy(true)}
+            >
+              <Text style={styles.settingIcon}>🛠️</Text>
+              <Text style={styles.settingText}>Administration (SaaS)</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity 
             style={styles.settingItem}
             onPress={() => setShowNotifications(true)}

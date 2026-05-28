@@ -2,6 +2,9 @@ import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import productService, { Product } from '../services/productService';
+import { saveProductUpdate } from '../services/productUpdateService';
+import { loadProductDetail } from '../services/productDetailService';
+import { CatalogProduct } from '../utils/productCatalogMerge';
 import authService from '../services/authService';
 import {
   EMPTY_PRODUCT_FORM,
@@ -32,16 +35,17 @@ export function useProductDetailFlow(options: UseProductDetailFlowOptions = {}) 
     authService.getUser()?.roles?.some((role) => role === 'ROLE_ADMIN' || role === 'ADMIN') ??
     false;
 
-  const refreshProductFromApi = useCallback(
-    async (id: number, onSynced?: (product: Product) => void) => {
+  const refreshProductDetail = useCallback(
+    async (product: CatalogProduct, onSynced?: (product: Product) => void) => {
       setDetailRefreshing(true);
       setDetailRefreshFailed(false);
       try {
-        const fresh = await productService.getProductById(id);
+        const { product: fresh, refreshFailed } = await loadProductDetail(product);
         setSelectedProduct(fresh);
+        setDetailRefreshFailed(refreshFailed);
         onSynced?.(fresh);
       } catch (error) {
-        console.error('Erreur refresh produit:', error);
+        console.warn('[useProductDetailFlow] Détail produit:', error);
         setDetailRefreshFailed(true);
       } finally {
         setDetailRefreshing(false);
@@ -51,13 +55,12 @@ export function useProductDetailFlow(options: UseProductDetailFlowOptions = {}) 
   );
 
   const openProductDetail = useCallback(
-    (product: Product, onSynced?: (product: Product) => void) => {
+    (product: Product | CatalogProduct, onSynced?: (product: Product) => void) => {
       setSelectedProduct(product);
       setScreenMode('detail');
-      setDetailRefreshFailed(false);
-      refreshProductFromApi(product.id, onSynced);
+      void refreshProductDetail(product as CatalogProduct, onSynced);
     },
-    [refreshProductFromApi]
+    [refreshProductDetail]
   );
 
   const goToList = useCallback(() => {
@@ -85,13 +88,13 @@ export function useProductDetailFlow(options: UseProductDetailFlowOptions = {}) 
 
       try {
         setIsSubmitting(true);
-        const updated = await productService.updateProduct(selectedProduct.id, payload);
+        const updated = await saveProductUpdate(selectedProduct, payload);
         setSelectedProduct(updated);
         onSynced?.(updated);
         onAfterUpdate?.(updated);
         Alert.alert(t('common.success'), t('products.productUpdated'));
         setScreenMode('detail');
-        refreshProductFromApi(updated.id, onSynced);
+        void refreshProductDetail(updated as CatalogProduct, onSynced);
       } catch (error: any) {
         console.error('Erreur mise à jour produit:', error);
         const message =
@@ -103,7 +106,7 @@ export function useProductDetailFlow(options: UseProductDetailFlowOptions = {}) 
         setIsSubmitting(false);
       }
     },
-    [selectedProduct, formValues, t, onAfterUpdate, refreshProductFromApi]
+    [selectedProduct, formValues, t, onAfterUpdate, refreshProductDetail]
   );
 
   const handleDelete = useCallback(async () => {
@@ -152,6 +155,6 @@ export function useProductDetailFlow(options: UseProductDetailFlowOptions = {}) 
     openEditForm,
     submitUpdate,
     confirmDelete,
-    refreshProductFromApi,
+    refreshProductDetail,
   };
 }

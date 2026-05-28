@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -28,32 +27,28 @@ public class SaleController {
     private SaleService saleService;
     
     @PostMapping
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<SaleResponse> createSale(@Valid @RequestBody SaleRequest saleRequest) {
-        try {
-            SaleResponse saleResponse = saleService.createSale(saleRequest);
-            return ResponseEntity.status(HttpStatus.CREATED).body(saleResponse);
-        } catch (Exception e) {
-            throw new RuntimeException("Error creating sale: " + e.getMessage());
-        }
+        SaleResponse saleResponse = saleService.createSale(saleRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saleResponse);
     }
     
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<SaleResponse> getSaleById(@PathVariable Long id) {
         SaleResponse saleResponse = saleService.getSaleById(id);
         return ResponseEntity.ok(saleResponse);
     }
     
     @GetMapping("/number/{saleNumber}")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<SaleResponse> getSaleBySaleNumber(@PathVariable String saleNumber) {
         SaleResponse saleResponse = saleService.getSaleBySaleNumber(saleNumber);
         return ResponseEntity.ok(saleResponse);
     }
     
     @GetMapping
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Page<SaleResponse>> getAllSales(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -65,7 +60,7 @@ public class SaleController {
     }
     
     @GetMapping("/date-range")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Page<SaleResponse>> getSalesByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
@@ -79,7 +74,7 @@ public class SaleController {
     }
     
     @GetMapping("/my-sales")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Page<SaleResponse>> getMySales(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -91,7 +86,7 @@ public class SaleController {
     }
     
     @GetMapping("/recent")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<SaleResponse>> getRecentSales(
             @RequestParam(defaultValue = "10") int limit) {
         
@@ -100,7 +95,7 @@ public class SaleController {
     }
     
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<SaleResponse> updateSaleStatus(
             @PathVariable Long id,
             @RequestParam Sale.SaleStatus status) {
@@ -110,7 +105,7 @@ public class SaleController {
     }
     
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Map<String, String>> deleteSale(@PathVariable Long id) {
         saleService.deleteSale(id);
         
@@ -121,7 +116,7 @@ public class SaleController {
     
     // Analytics endpoints
     @GetMapping("/analytics/summary")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Map<String, Object>> getSalesSummary(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
@@ -135,7 +130,7 @@ public class SaleController {
     }
     
     @GetMapping("/analytics/payment-methods")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<Object[]>> getPaymentMethodStats(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
@@ -145,7 +140,7 @@ public class SaleController {
     }
     
     @GetMapping("/analytics/daily")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<Object[]>> getDailySalesStats(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
@@ -155,7 +150,7 @@ public class SaleController {
     }
     
     @GetMapping("/analytics/monthly")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<Object[]>> getMonthlySalesStats(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
@@ -165,7 +160,7 @@ public class SaleController {
     }
     
     @GetMapping("/analytics/top-customers")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<Object[]>> getTopCustomers(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
@@ -175,10 +170,4 @@ public class SaleController {
         return ResponseEntity.ok(customers);
     }
     
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", ex.getMessage());
-        return ResponseEntity.badRequest().body(error);
-    }
 }

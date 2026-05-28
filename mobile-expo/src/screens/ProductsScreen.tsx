@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import productService, { Product } from '../services/productService';
+import productDAO from '../dao/ProductDAO';
 import authService from '../services/authService';
+import { applyScannerSqlMigrations } from '../database/scannerSqlMigrations';
 import ProductForm from '../components/ProductForm';
 import ProductDetailView from '../components/ProductDetailView';
 import UnknownBarcodeModal, { QuickProductFormData } from '../components/bluetooth/UnknownBarcodeModal';
@@ -33,6 +35,13 @@ import {
   formValuesToProductRequest,
   productToFormValues,
 } from '../utils/productFormUtils';
+import {
+  CatalogProduct,
+  isLocalOnlyCatalogProduct,
+  mergeApiAndLocalProducts,
+} from '../utils/productCatalogMerge';
+import { saveProductUpdate } from '../services/productUpdateService';
+import { loadProductDetail } from '../services/productDetailService';
 
 type ScreenMode = 'list' | 'add' | 'detail' | 'edit';
 
@@ -42,7 +51,7 @@ interface ProductsScreenProps {
 
 const ProductsScreen: React.FC<ProductsScreenProps> = () => {
   const { t, i18n } = useTranslation();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,16 +73,37 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
     .getUser()
     ?.roles?.some((role) => role === 'ROLE_ADMIN' || role === 'ADMIN') ?? false;
 
-  const loadProducts = async () => {
+  const loadProducts = async (): Promise<CatalogProduct[]> => {
     try {
       setLoading(true);
+
+      if (NetworkService.isOnline() && authService.getToken()) {
+        try {
+          await pendingProductSyncService.syncAll();
+        } catch (syncErr) {
+          console.warn('[ProductsScreen] Sync produits en attente:', syncErr);
+        }
+      }
+
       const productsData = await productService.getProducts();
-      const productsArray = Array.isArray(productsData) ? productsData : [];
-      setProducts(productsArray);
+      const apiArray = Array.isArray(productsData) ? productsData : [];
+
+      await applyScannerSqlMigrations();
+      const localRows = await productDAO.listActiveForCatalog();
+      const merged = mergeApiAndLocalProducts(apiArray, localRows);
+
+      console.log(
+        `[ProductsScreen] Catalogue: ${apiArray.length} API + ${merged.length - apiArray.length} locaux = ${merged.length}`
+      );
+      setProducts(merged);
+      productsRef.current = merged;
+      return merged;
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
       Alert.alert(t('common.error'), t('products.loadError'));
       setProducts([]);
+      productsRef.current = [];
+      return [];
     } finally {
       setLoading(false);
     }
@@ -85,26 +115,33 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
     setRefreshing(false);
   };
 
-  const refreshProductFromApi = useCallback(async (id: number) => {
+  const refreshProductDetail = useCallback(async (product: CatalogProduct) => {
     setDetailRefreshing(true);
     setDetailRefreshFailed(false);
     try {
-      const fresh = await productService.getProductById(id);
+      const { product: fresh, refreshFailed } = await loadProductDetail(product);
       setSelectedProduct(fresh);
-      setProducts((prev) => prev.map((p) => (p.id === id ? fresh : p)));
+      setDetailRefreshFailed(refreshFailed);
+      setProducts((prev) =>
+        prev.map((p) =>
+          (fresh.id && p.id === fresh.id) ||
+          (fresh.localSqliteId && p.localSqliteId === fresh.localSqliteId)
+            ? fresh
+            : p
+        )
+      );
     } catch (error) {
-      console.error('Erreur refresh produit:', error);
+      console.warn('[ProductsScreen] Détail produit:', error);
       setDetailRefreshFailed(true);
     } finally {
       setDetailRefreshing(false);
     }
   }, []);
 
-  const openProductDetail = (product: Product) => {
+  const openProductDetail = (product: CatalogProduct) => {
     setSelectedProduct(product);
     setScreenMode('detail');
-    setDetailRefreshFailed(false);
-    refreshProductFromApi(product.id);
+    void refreshProductDetail(product);
   };
 
   const goToList = () => {
@@ -146,9 +183,13 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
       if (local) {
         setUnknownPrefill({
           name: local.name,
+          description: local.description ?? undefined,
+          purchasePrice:
+            local.purchase_price != null ? Number(local.purchase_price) : Number(local.price),
           sellingPrice: Number(local.price),
           stockQuantity: Number(local.stock_quantity ?? 1),
           expiryDate: local.expiration_date ?? undefined,
+          category: local.category ?? undefined,
         });
       } else {
         setUnknownPrefill(null);
@@ -189,7 +230,17 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
   );
 
   const handleUnknownBarcode = useCallback(
-    (barcode: string) => {
+    async (barcode: string) => {
+      const user = authService.getUser();
+      const localOnly = await productDAO.findByBarcode(
+        barcode,
+        user ? String(user.id) : undefined
+      );
+      if (localOnly) {
+        handleScannedProductFound(localOnly);
+        return;
+      }
+
       const fromCatalog = findCatalogProductByBarcode(barcode);
       if (fromCatalog) {
         void playScanSuccessFeedback();
@@ -201,6 +252,26 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
         return;
       }
 
+      if (NetworkService.isOnline()) {
+        try {
+          const fromServer = await productService.findByBarcode(barcode);
+          if (fromServer) {
+            void playScanSuccessFeedback();
+            setProducts((prev) =>
+              prev.some((p) => p.id === fromServer.id) ? prev : [fromServer, ...prev]
+            );
+            if (screenMode === 'add' || screenMode === 'edit') {
+              handleExistingProductScan(fromServer, barcode);
+            } else {
+              openProductDetail(fromServer);
+            }
+            return;
+          }
+        } catch (lookupError) {
+          console.warn('[ProductsScreen] Recherche code-barres API:', lookupError);
+        }
+      }
+
       void playScanNotFoundFeedback();
       if (screenMode === 'add') {
         void openUnknownProductModal(barcode);
@@ -208,7 +279,13 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
         setFormValues((prev) => ({ ...prev, barcode }));
       }
     },
-    [screenMode, findCatalogProductByBarcode, handleExistingProductScan, openUnknownProductModal]
+    [
+      screenMode,
+      findCatalogProductByBarcode,
+      handleExistingProductScan,
+      handleScannedProductFound,
+      openUnknownProductModal,
+    ]
   );
 
   const syncPendingLocalProduct = useCallback(
@@ -219,16 +296,25 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
       }
 
       try {
+        await pendingProductSyncService.syncLocalProduct({
+          id: local.id,
+          server_id: local.server_id,
+          name: local.name,
+          price: local.price,
+          stock_quantity: local.stock_quantity,
+          expiration_date: local.expiration_date,
+          created_at: local.created_at,
+          updated_at: local.updated_at,
+          is_deleted: local.is_deleted,
+          sync_status: local.sync_status,
+          user_id: local.user_id,
+          barcode: local.barcode ?? undefined,
+        });
         const syncResult = await pendingProductSyncService.syncAll();
-        const productsData = await productService.getProducts();
-        const productsArray = Array.isArray(productsData) ? productsData : [];
-        setProducts(productsArray);
-        productsRef.current = productsArray;
+        const productsArray = await loadProducts();
 
         const fromCatalog =
-          (local.server_id
-            ? productsArray.find((p) => p.id === local.server_id)
-            : null) ??
+          productsArray.find((p) => p.id && local.server_id && p.id === local.server_id) ??
           (local.barcode
             ? productsArray.find((p) => p.barcode?.trim() === local.barcode?.trim())
             : null);
@@ -315,6 +401,15 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
             (e) => e.includes('Erreur 409') || e.toLowerCase().includes('code-barres existe déjà')
           );
           if (conflict) {
+            await loadProducts();
+            const existing = await productService.findByBarcode(data.barcode);
+            if (existing) {
+              setShowUnknownModal(false);
+              setUnknownBarcode('');
+              Alert.alert(t('common.success'), t('products.productAlreadyInCatalog', { name: existing.name }));
+              goToList();
+              return;
+            }
             throw new Error(conflict.replace(/^[^:]+:\s*/, ''));
           }
         }
@@ -418,12 +513,12 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
 
     try {
       setIsSubmitting(true);
-      const updated = await productService.updateProduct(selectedProduct.id, payload);
+      const updated = await saveProductUpdate(selectedProduct, payload);
+      await loadProducts();
       setSelectedProduct(updated);
-      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       Alert.alert(t('common.success'), t('products.productUpdated'));
       setScreenMode('detail');
-      refreshProductFromApi(updated.id);
+      void refreshProductDetail(updated);
     } catch (error: any) {
       console.error('Erreur mise à jour produit:', error);
       const message =
@@ -500,7 +595,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
     </View>
   );
 
-  const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
+  const ProductCard: React.FC<{ product: CatalogProduct }> = ({ product }) => (
     <TouchableOpacity
       style={styles.productCard}
       onPress={() => openProductDetail(product)}
@@ -510,6 +605,9 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
         <Text style={styles.productName}>{product.name}</Text>
         <Text style={styles.productCategory}>{product.category || t('products.noCategory')}</Text>
       </View>
+      {isLocalOnlyCatalogProduct(product) && (
+        <Text style={styles.localPendingBadge}>{t('products.localOnlyListBadge')}</Text>
+      )}
       <Text style={styles.productDescription} numberOfLines={2}>
         {product.description}
       </Text>
@@ -581,7 +679,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
           product={selectedProduct}
           refreshing={detailRefreshing}
           refreshFailed={detailRefreshFailed}
-          onRetryRefresh={() => refreshProductFromApi(selectedProduct.id)}
+          onRetryRefresh={() => void refreshProductDetail(selectedProduct)}
           onEdit={openEditForm}
           onDelete={confirmDelete}
           canDelete={canDelete}
@@ -718,6 +816,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#ddd',
+  },
+  localPendingBadge: {
+    fontSize: 12,
+    color: '#b45309',
+    backgroundColor: '#fef3c7',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 6,
   },
   productHeader: {
     flexDirection: 'row',

@@ -2,7 +2,9 @@ package com.salesmanager.controller;
 
 import com.salesmanager.entity.Product;
 import com.salesmanager.entity.Role;
+import com.salesmanager.entity.Organisation;
 import com.salesmanager.entity.User;
+import com.salesmanager.repository.OrganisationRepository;
 import com.salesmanager.repository.ProductRepository;
 import com.salesmanager.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,12 +32,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProductBarcodeControllerTest {
 
     private static final String TEST_BARCODE = "6194001234567";
+    private static final UUID DEFAULT_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private OrganisationRepository organisationRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -44,7 +51,15 @@ class ProductBarcodeControllerTest {
 
     @BeforeEach
     void seedProductWithBarcode() {
-        if (productRepository.findByBarcode(TEST_BARCODE).isPresent()) {
+        Organisation org = organisationRepository.findById(DEFAULT_ORG_ID).orElseGet(() -> {
+            Organisation o = new Organisation();
+            o.setId(DEFAULT_ORG_ID);
+            o.setName("DEFAULT");
+            o.setIsActive(true);
+            return organisationRepository.save(o);
+        });
+
+        if (productRepository.existsByBarcodeAndOrganisation_Id(TEST_BARCODE, DEFAULT_ORG_ID)) {
             return;
         }
 
@@ -70,6 +85,7 @@ class ProductBarcodeControllerTest {
         product.setMinStockLevel(5);
         product.setIsActive(true);
         product.setCreatedBy(user);
+        product.setOrganisation(org);
         productRepository.save(product);
     }
 

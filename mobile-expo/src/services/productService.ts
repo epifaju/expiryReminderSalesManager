@@ -1,9 +1,10 @@
 import apiClient from './apiClient';
+import { barcodeLookupCandidates } from '../bluetooth/gs1BarcodeParser';
 
 const handleApiError = (error: any) => {
   if (error.response) {
     const { status, data } = error.response;
-    let message = data.message || 'Erreur inconnue';
+    let message = data?.message || data?.error || 'Erreur inconnue';
     
     switch (status) {
       case 401:
@@ -82,11 +83,75 @@ class ProductService {
     }
   }
 
+  async findByBarcode(barcode: string): Promise<Product | null> {
+    const candidates = barcodeLookupCandidates(barcode);
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const mapPayload = (payload: any): Product => ({
+      id: payload.id,
+      name: payload.name,
+      barcode: payload.barcode,
+      category: payload.category,
+      unit: payload.unit ?? 'pcs',
+      purchasePrice: Number(payload.purchasePrice ?? payload.salePrice ?? 0),
+      sellingPrice: Number(payload.salePrice ?? payload.sellingPrice ?? 0),
+      stockQuantity: Number(payload.stockQuantity ?? 0),
+      minStockLevel: Number(payload.minStockLevel ?? 0),
+      expiryDate: payload.expirationDate ?? payload.expiryDate,
+      isActive: payload.isActive ?? true,
+    });
+
+    const paths = ['/products/barcode/', '/api/v1/products/barcode/'];
+    const lookupConfig = {
+      silentNotFound: true,
+      validateStatus: (status: number) => status === 200 || status === 404,
+    };
+
+    for (const code of candidates) {
+      for (const pathPrefix of paths) {
+        const response = await apiClient.get(
+          `${pathPrefix}${encodeURIComponent(code)}`,
+          lookupConfig
+        );
+        if (response.status === 404) {
+          continue;
+        }
+        const payload = response.data?.data ?? response.data;
+        if (payload?.id) {
+          return mapPayload(payload);
+        }
+      }
+    }
+
+    return null;
+  }
+
   async getProductById(id: number) {
+    const product = await this.getProductByIdOptional(id);
+    if (!product) {
+      throw new Error('Erreur 404: Ressource introuvable');
+    }
+    return product;
+  }
+
+  /** Retourne null si le produit n'existe pas dans l'organisation courante (sans log d'erreur). */
+  async getProductByIdOptional(id: number): Promise<Product | null> {
     try {
-      const response = await apiClient.get(`/products/${id}`);
+      const response = await apiClient.get(`/products/${id}`, {
+        silentNotFound: true,
+        validateStatus: (status: number) => status === 200 || status === 404,
+      });
+      if (response.status === 404) {
+        return null;
+      }
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        return null;
+      }
       handleApiError(error);
       throw error;
     }

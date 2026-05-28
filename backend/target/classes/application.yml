@@ -49,7 +49,7 @@ logging:
     com.salesmanager: DEBUG
     org.springframework.security: DEBUG
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n%ex{full}"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 # CORS Configuration
@@ -82,3 +82,8 @@ business:
     expiry-warning-days: 7
   reports:
     timezone: UTC
+
+multitenancy:
+  # Quand true: les endpoints métier exigent orgId dans le JWT.
+  # Démarrer à false pour rollout progressif, puis passer à true une fois le mobile déployé.
+  require-tenant-claims: false

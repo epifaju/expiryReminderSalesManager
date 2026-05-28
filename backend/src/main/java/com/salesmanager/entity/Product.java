@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -25,8 +26,12 @@ public class Product {
     @Size(max = 500)
     private String description;
     
-    @Column(name = "barcode", unique = true, length = 50)
+    @Column(name = "barcode", length = 50)
     private String barcode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organisation_id", nullable = false)
+    private Organisation organisation;
     
     @NotNull
     @DecimalMin(value = "0.0", inclusive = false)
@@ -106,7 +111,7 @@ public class Product {
     
     public BigDecimal getProfitMargin() {
         if (purchasePrice.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
-        return getProfit().divide(purchasePrice, 4, BigDecimal.ROUND_HALF_UP).multiply(BigDecimal.valueOf(100));
+        return getProfit().divide(purchasePrice, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
     }
     
     // Getters and Setters
@@ -140,6 +145,14 @@ public class Product {
     
     public void setBarcode(String barcode) {
         this.barcode = barcode;
+    }
+
+    public Organisation getOrganisation() {
+        return organisation;
+    }
+
+    public void setOrganisation(Organisation organisation) {
+        this.organisation = organisation;
     }
     
     public BigDecimal getPurchasePrice() {

@@ -1,4 +1,5 @@
 import { LocalProduct } from '../types/localProduct';
+import { barcodesEquivalent } from '../bluetooth/gs1BarcodeParser';
 
 /** Produit format écran ventes (API). */
 export interface SaleCartProduct {
@@ -26,15 +27,12 @@ export function resolveSaleProductFromLocal(
   }
 
   if (local.barcode) {
-    const normalized = local.barcode.trim();
-    const byBarcode = apiProducts.find((p) => p.barcode?.trim() === normalized);
+    const byBarcode = apiProducts.find(
+      (p) => p.barcode && barcodesEquivalent(p.barcode, local.barcode!)
+    );
     if (byBarcode) {
       return byBarcode;
     }
-  }
-
-  if (local.server_id) {
-    return mapLocalToSaleProduct(local);
   }
 
   return null;

@@ -17,10 +17,11 @@ import BarcodeScanner from '../components/BarcodeScanner';
 import UnknownBarcodeModal, { QuickProductFormData } from '../components/bluetooth/UnknownBarcodeModal';
 import { formatPrice, formatDate } from '../utils/formatters';
 import { registerSalesScanCallbacks } from '../hooks/scannerSaleBridge';
-import { resolveSaleProductFromLocal } from '../utils/scannerSaleBridge';
+import { mapLocalToSaleProduct, resolveSaleProductFromLocal } from '../utils/scannerSaleBridge';
 import productDAO from '../dao/ProductDAO';
 import { applyScannerSqlMigrations } from '../database/scannerSqlMigrations';
 import { normalizeBarcode } from '../bluetooth/scannerUtils';
+import { barcodesEquivalent } from '../bluetooth/gs1BarcodeParser';
 import { createQuickProduct } from '../services/scanner/scannerProductRepository';
 import authService from '../services/authService';
 import { LocalProduct } from '../types/localProduct';
@@ -30,6 +31,7 @@ import {
 } from '../bluetooth/scannerFeedback';
 import { pendingProductSyncService } from '../services/scanner/PendingProductSyncService';
 import NetworkService from '../services/network/NetworkService';
+import productService from '../services/productService';
 // import CreateReceiptButton from '../components/CreateReceiptButton';
 
 interface Product {
@@ -74,9 +76,10 @@ interface Sale {
 
 interface SalesScreenProps {
   token: string;
+  onNavigate?: (tab: 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'expiring' | 'settings') => void;
 }
 
-const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
+const SalesScreen: React.FC<SalesScreenProps> = ({ token, onNavigate }) => {
   const { t, i18n } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -126,10 +129,38 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       return;
     }
 
-    const fromCatalog = productsRef.current.find((p) => p.barcode?.trim() === trimmed);
+    const fromCatalog = productsRef.current.find(
+      (p) => p.barcode && barcodesEquivalent(p.barcode, trimmed)
+    );
     if (fromCatalog?.id) {
       addToCartAndNotify(fromCatalog);
       return;
+    }
+
+    if (NetworkService.isOnline()) {
+      try {
+        const fromServer = await productService.findByBarcode(trimmed);
+        if (fromServer?.id) {
+          const saleProduct: Product = {
+            id: fromServer.id,
+            name: fromServer.name,
+            sellingPrice: fromServer.sellingPrice,
+            stockQuantity: fromServer.stockQuantity,
+            category: fromServer.category ?? '',
+            unit: fromServer.unit ?? 'pcs',
+            barcode: fromServer.barcode ?? trimmed,
+          };
+          setProducts((prev) =>
+            prev.some((p) => p.id === saleProduct.id) ? prev : [saleProduct, ...prev]
+          );
+          productsRef.current = [saleProduct, ...productsRef.current.filter((p) => p.id !== saleProduct.id)];
+          void playScanSuccessFeedback();
+          addToCartAndNotify(saleProduct);
+          return;
+        }
+      } catch (lookupError) {
+        console.warn('[SalesScreen] Recherche API code-barres:', lookupError);
+      }
     }
 
     console.log('[SalesScreen] Produit inconnu, ouverture modal:', trimmed);
@@ -137,10 +168,13 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     setUnknownBarcode(trimmed);
     try {
       const user = authService.getUser();
-      const local = await productDAO.findByBarcode(trimmed, user ? String(user.id) : undefined);
+      const local = await productDAO.findByBarcodeForUpsert(trimmed);
       if (local) {
         setUnknownPrefill({
           name: local.name,
+          description: local.description ?? undefined,
+          purchasePrice:
+            local.purchase_price != null ? Number(local.purchase_price) : Number(local.price),
           sellingPrice: Number(local.price),
           stockQuantity: Number(local.stock_quantity ?? 1),
           expiryDate: local.expiration_date ?? undefined,
@@ -177,7 +211,78 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     }
   }, []);
 
-  /** Résolution unique : catalogue API → SQLite → création rapide (évite double modal). */
+  /** Produit local (SQLite) → sync si besoin → produit vente avec id serveur. */
+  const resolveLocalProductForSale = useCallback(
+    async (trimmed: string, localHint: LocalProduct | null): Promise<Product | null> => {
+      let local = localHint;
+      if (!local) {
+        await applyScannerSqlMigrations();
+        local = await productDAO.findByBarcode(trimmed);
+      }
+      if (!local) {
+        return null;
+      }
+
+      console.log('[SalesScreen] Résolution locale:', local.name, 'sync=', local.sync_status, 'server_id=', local.server_id);
+
+      let catalog = productsRef.current;
+      let fromLocal = resolveSaleProductFromLocal(local, catalog);
+      if (fromLocal?.id) {
+        return fromLocal;
+      }
+
+      const byName = catalog.find(
+        (p) => p.name.trim().toLowerCase() === local!.name.trim().toLowerCase()
+      );
+      if (byName?.id) {
+        return byName;
+      }
+
+      if (!NetworkService.isOnline() || !authService.getToken()) {
+        return null;
+      }
+
+      try {
+        const serverId = await pendingProductSyncService.syncLocalProduct({
+          id: local.id,
+          server_id: local.server_id,
+          name: local.name,
+          price: local.price,
+          stock_quantity: local.stock_quantity,
+          expiration_date: local.expiration_date,
+          created_at: local.created_at,
+          updated_at: local.updated_at,
+          is_deleted: local.is_deleted,
+          sync_status: local.sync_status,
+          user_id: local.user_id,
+          barcode: local.barcode ?? trimmed,
+        });
+        catalog = await loadProducts();
+        const refreshed = (await productDAO.findByBarcode(trimmed)) ?? local;
+        fromLocal = resolveSaleProductFromLocal(refreshed, catalog);
+        if (fromLocal?.id) {
+          return fromLocal;
+        }
+        if (serverId > 0) {
+          try {
+            const apiProduct = await productService.getProductById(serverId);
+            if (apiProduct?.id) {
+              return apiProduct as Product;
+            }
+          } catch {
+            // ignore
+          }
+        }
+      } catch (syncErr) {
+        console.warn('[SalesScreen] Sync locale échouée:', syncErr);
+      }
+
+      return null;
+    },
+    [loadProducts]
+  );
+
+  /** Résolution unique : catalogue API → SQLite/sync → création rapide. */
   const processSaleBarcode = useCallback(
     async (barcode: string, localHint: LocalProduct | null = null) => {
       const trimmed = normalizeBarcode(barcode);
@@ -197,8 +302,12 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
       lastSaleScanRef.current = { barcode: trimmed, at: now };
       saleScanInFlightRef.current = true;
 
+      if (productsRef.current.length === 0) {
+        await loadProducts();
+      }
+
       let catalog = productsRef.current;
-      const fromCatalog = catalog.find((p) => p.barcode?.trim() === trimmed);
+      const fromCatalog = catalog.find((p) => p.barcode && barcodesEquivalent(p.barcode, trimmed));
       if (fromCatalog?.id) {
         void playScanSuccessFeedback();
         lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
@@ -206,18 +315,55 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
         return;
       }
 
-      /**
-       * Règle POS:
-       * - Pour une vente, la "liste des produits" fait foi (catalogue backend).
-       * - Si le produit n'existe pas encore côté backend, on ouvre immédiatement le modal
-       *   "Produit inconnu" (même s'il existe en SQLite local).
-       *
-       * Ça évite le flux actuel où l'erreur 400 n'apparaît qu'au moment du POST /sales.
-       */
+      // Priorité au stock SQLite (souvent pending ou lié à une autre org)
+      const fromLocalSale = await resolveLocalProductForSale(trimmed, localHint);
+      if (fromLocalSale?.id) {
+        setProducts((prev) =>
+          prev.some((p) => p.id === fromLocalSale.id) ? prev : [fromLocalSale, ...prev]
+        );
+        productsRef.current = [
+          fromLocalSale,
+          ...productsRef.current.filter((p) => p.id !== fromLocalSale.id),
+        ];
+        void playScanSuccessFeedback();
+        lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
+        addToCartAndNotify(fromLocalSale);
+        return;
+      }
+
+      if (NetworkService.isOnline()) {
+        const fromServer = await productService.findByBarcode(trimmed);
+        if (fromServer?.id) {
+          const saleProduct: Product = {
+            id: fromServer.id,
+            name: fromServer.name,
+            sellingPrice: fromServer.sellingPrice,
+            stockQuantity: fromServer.stockQuantity,
+            category: fromServer.category ?? '',
+            unit: fromServer.unit ?? 'pcs',
+            barcode: fromServer.barcode ?? trimmed,
+          };
+          catalog = [saleProduct, ...catalog.filter((p) => p.id !== saleProduct.id)];
+          setProducts(catalog);
+          productsRef.current = catalog;
+          void playScanSuccessFeedback();
+          lastSaleSuccessRef.current = { barcode: trimmed, at: Date.now() };
+          addToCartAndNotify(saleProduct);
+          return;
+        }
+      }
+
       void playScanNotFoundFeedback();
       void openUnknownProductModal(trimmed);
     },
-    [addToCartAndNotify, dismissUnknownModal, loadProducts, openUnknownProductModal, t]
+    [
+      addToCartAndNotify,
+      dismissUnknownModal,
+      loadProducts,
+      openUnknownProductModal,
+      resolveLocalProductForSale,
+      t,
+    ]
   );
 
   const processSaleBarcodeSafe = useCallback(
@@ -304,9 +450,36 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
     }
 
     try {
-      const local = await createQuickProduct(data, String(user.id));
-      // Ne ferme pas le modal tant que la sync n'a pas réussi (sinon en cas de 409
-      // on perd le contexte et on affiche une erreur globale).
+      let local: LocalProduct;
+      try {
+        local = await createQuickProduct(data, String(user.id));
+      } catch (localError: any) {
+        const isUnique =
+          localError?.message?.includes('UNIQUE constraint') ||
+          localError?.message?.includes('SQLITE_CONSTRAINT_UNIQUE');
+        if (isUnique && NetworkService.isOnline()) {
+          const fromServer = await productService.findByBarcode(data.barcode);
+          if (fromServer?.id) {
+            const catalog = await loadProducts();
+            const saleProduct = catalog.find((p) => p.id === fromServer.id) ?? {
+              id: fromServer.id,
+              name: fromServer.name,
+              sellingPrice: fromServer.sellingPrice,
+              stockQuantity: fromServer.stockQuantity,
+              category: fromServer.category ?? '',
+              unit: fromServer.unit ?? 'pcs',
+              barcode: fromServer.barcode ?? data.barcode,
+            };
+            setShowUnknownModal(false);
+            setUnknownBarcode('');
+            dismissUnknownModal();
+            setPendingCartProduct(saleProduct as Product);
+            Alert.alert(t('common.success'), t('products.productAlreadyInCatalog', { name: fromServer.name }));
+            return;
+          }
+        }
+        throw localError;
+      }
 
       let catalog = await loadProducts();
       let saleProduct = resolveSaleProductFromLocal(local, catalog);
@@ -488,8 +661,7 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token }) => {
                             {
                               text: t('sales.receipt.viewReceipts'),
                               onPress: () => {
-                                // Optionnel: naviguer vers l'écran des reçus
-                                console.log('Aller à l\'écran des reçus');
+                                onNavigate?.('receipts');
                               },
                             },
                             { text: t('common.ok') },

@@ -1,4 +1,5 @@
 import { Product, ProductRequest } from '../services/productService';
+import { clampProductText, PRODUCT_TEXT_LIMITS } from '../database/productSql';
 
 export interface ProductFormValues {
   name: string;
@@ -56,14 +57,15 @@ export const productToFormValues = (product: Partial<Product>): ProductFormValue
 });
 
 export const formValuesToProductRequest = (values: ProductFormValues): ProductRequest => ({
-  name: values.name.trim(),
-  description: values.description.trim() || undefined,
-  barcode: values.barcode.trim() || undefined,
+  name: clampProductText(values.name, PRODUCT_TEXT_LIMITS.name) ?? '',
+  description:
+    clampProductText(values.description, PRODUCT_TEXT_LIMITS.description) ?? undefined,
+  barcode: clampProductText(values.barcode, PRODUCT_TEXT_LIMITS.barcode) ?? undefined,
   purchasePrice: parseFloat(values.purchasePrice),
   sellingPrice: parseFloat(values.sellingPrice),
   stockQuantity: parseInt(values.stockQuantity, 10) || 0,
   minStockLevel: parseInt(values.minStockLevel, 10) || 5,
-  category: values.category.trim() || undefined,
+  category: clampProductText(values.category, PRODUCT_TEXT_LIMITS.category) ?? undefined,
   unit: values.unit.trim() || 'pcs',
   manufacturingDate: values.manufacturingDate || undefined,
   expiryDate: values.expiryDate || undefined,

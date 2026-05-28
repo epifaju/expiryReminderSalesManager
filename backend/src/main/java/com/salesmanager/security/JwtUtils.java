@@ -6,11 +6,11 @@ import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import com.salesmanager.security.UserDetailsImpl;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -22,13 +22,15 @@ public class JwtUtils {
     @Value("${jwt.expiration}")
     private int jwtExpirationMs;
 
-    public String generateJwtToken(UserDetailsImpl userDetails) {
-        return generateTokenFromUsername(userDetails.getUsername());
+    public String generateJwtToken(UserDetailsImpl userDetails, UUID organisationId, UUID storeId) {
+        return generateTokenFromUsername(userDetails.getUsername(), organisationId, storeId);
     }
 
-    public String generateTokenFromUsername(String username) {
+    public String generateTokenFromUsername(String username, UUID organisationId, UUID storeId) {
         return Jwts.builder()
                 .setSubject(username)
+                .claim("orgId", organisationId != null ? organisationId.toString() : null)
+                .claim("storeId", storeId != null ? storeId.toString() : null)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key(), SignatureAlgorithm.HS256)
@@ -42,6 +44,18 @@ public class JwtUtils {
     public String getUserNameFromJwtToken(String token) {
         return Jwts.parserBuilder().setSigningKey(key()).build()
                 .parseClaimsJws(token).getBody().getSubject();
+    }
+
+    public String getOrganisationIdFromJwtToken(String token) {
+        Object value = Jwts.parserBuilder().setSigningKey(key()).build()
+                .parseClaimsJws(token).getBody().get("orgId");
+        return value != null ? value.toString() : null;
+    }
+
+    public String getStoreIdFromJwtToken(String token) {
+        Object value = Jwts.parserBuilder().setSigningKey(key()).build()
+                .parseClaimsJws(token).getBody().get("storeId");
+        return value != null ? value.toString() : null;
     }
 
     public boolean validateJwtToken(String authToken) {

@@ -274,7 +274,10 @@ const ExpiringProductsScreen: React.FC<ExpiringProductsScreenProps> = () => {
           refreshing={detailFlow.detailRefreshing}
           refreshFailed={detailFlow.detailRefreshFailed}
           onRetryRefresh={() =>
-            detailFlow.refreshProductFromApi(detailFlow.selectedProduct!.id, syncProductInLists)
+            void detailFlow.refreshProductDetail(
+              detailFlow.selectedProduct!,
+              syncProductInLists
+            )
           }
           onEdit={detailFlow.openEditForm}
           onDelete={detailFlow.confirmDelete}

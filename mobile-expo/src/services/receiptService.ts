@@ -88,13 +88,9 @@ class ReceiptService {
       if (!response.data) {
         throw new Error('Réponse vide reçue du serveur');
       }
-      
-      if (!response.data.receipt) {
-        console.error('❌ Structure de réponse inattendue:', response.data);
-        throw new Error('Structure de réponse inattendue: propriété "receipt" manquante');
-      }
-      
-      const receipt = response.data.receipt;
+
+      // Compat backend: ancien format { message, receipt } vs nouveau format ReceiptResponse direct
+      const receipt = response.data.receipt ? response.data.receipt : response.data;
       
       // Vérifier que le reçu a les propriétés essentielles
       if (!receipt.id) {

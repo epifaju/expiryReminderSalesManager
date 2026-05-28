@@ -33,6 +33,15 @@ public class Receipt {
     private Sale sale;
 
     @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organisation_id", nullable = false)
+    private Organisation organisation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
+    @NotNull
     @Column(name = "total_amount", precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
@@ -162,6 +171,22 @@ public class Receipt {
 
     public void setSale(Sale sale) {
         this.sale = sale;
+    }
+
+    public Organisation getOrganisation() {
+        return organisation;
+    }
+
+    public void setOrganisation(Organisation organisation) {
+        this.organisation = organisation;
+    }
+
+    public Store getStore() {
+        return store;
+    }
+
+    public void setStore(Store store) {
+        this.store = store;
     }
 
     public BigDecimal getTotalAmount() {

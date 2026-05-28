@@ -143,7 +143,67 @@ export async function applyScannerSqlMigrations(): Promise<void> {
     await setAppliedVersion(version);
   }
 
+  if (version < 5) {
+    await migration005();
+    version = 5;
+    await setAppliedVersion(version);
+  }
+
+  if (version < 6) {
+    await migration006();
+    version = 6;
+    await setAppliedVersion(version);
+  }
+
+  if (version < 7) {
+    await migration007();
+    version = 7;
+    await setAppliedVersion(version);
+  }
+
   migrationsApplied = true;
+}
+
+/** Migration 007 — tronque les textes trop longs (évite Row too big / CursorWindow). */
+async function migration007(): Promise<void> {
+  if (await columnExists('products', 'description')) {
+    await DatabaseService.executeSql(
+      `UPDATE products SET description = substr(description, 1, 500) WHERE length(description) > 500`
+    );
+  }
+  await DatabaseService.executeSql(
+    `UPDATE products SET name = substr(name, 1, 255) WHERE length(name) > 255`
+  );
+  if (await columnExists('products', 'barcode')) {
+    await DatabaseService.executeSql(
+      `UPDATE products SET barcode = substr(barcode, 1, 128) WHERE length(barcode) > 128`
+    );
+  }
+  if (await columnExists('products', 'category')) {
+    await DatabaseService.executeSql(
+      `UPDATE products SET category = substr(category, 1, 128) WHERE length(category) > 128`
+    );
+  }
+}
+
+/** Migration 006 — prix d'achat et description (modal produit inconnu). */
+async function migration006(): Promise<void> {
+  if (!(await columnExists('products', 'purchase_price'))) {
+    await DatabaseService.executeSql(`ALTER TABLE products ADD COLUMN purchase_price REAL`);
+  }
+  if (!(await columnExists('products', 'description'))) {
+    await DatabaseService.executeSql(`ALTER TABLE products ADD COLUMN description TEXT`);
+  }
+}
+
+/** Migration 005 — index barcode unique seulement sur les lignes actives. */
+async function migration005(): Promise<void> {
+  await DatabaseService.executeSql(`DROP INDEX IF EXISTS idx_products_barcode`);
+  await DatabaseService.executeSql(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_products_barcode_active
+    ON products(barcode)
+    WHERE barcode IS NOT NULL AND is_deleted = 0
+  `);
 }
 
 /** Réinitialise le cache (tests uniquement). */

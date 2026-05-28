@@ -23,18 +23,29 @@ import java.util.Map;
 @RequestMapping("/products")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ProductController {
+
+    /** Aligné sur SaleController : caissiers (USER) peuvent créer/mettre à jour le catalogue. */
+    private static final String PRODUCT_WRITE_ROLES =
+            "hasRole('USER') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PLATFORM_ADMIN')";
     
     @Autowired
     private ProductService productService;
     
     // Create product
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize(PRODUCT_WRITE_ROLES)
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse response = productService.createProduct(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
     
+    // Get product by barcode (avant /{id} pour ne pas confondre "barcode" avec un id)
+    @GetMapping("/barcode/{barcode}")
+    public ResponseEntity<ProductResponse> getProductByBarcode(@PathVariable String barcode) {
+        ProductResponse response = productService.getProductByBarcode(barcode);
+        return ResponseEntity.ok(response);
+    }
+
     // Get product by ID
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
@@ -116,7 +127,7 @@ public class ProductController {
     
     // Update product
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize(PRODUCT_WRITE_ROLES)
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id, 
             @Valid @RequestBody ProductRequest request) {
@@ -126,7 +137,7 @@ public class ProductController {
     
     // Delete product (soft delete)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         Map<String, String> response = new HashMap<>();
@@ -136,18 +147,11 @@ public class ProductController {
     
     // Update stock quantity
     @PatchMapping("/{id}/stock")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize(PRODUCT_WRITE_ROLES)
     public ResponseEntity<ProductResponse> updateStock(
             @PathVariable Long id, 
             @RequestParam Integer quantity) {
         ProductResponse response = productService.updateStock(id, quantity);
-        return ResponseEntity.ok(response);
-    }
-    
-    // Get product by barcode
-    @GetMapping("/barcode/{barcode}")
-    public ResponseEntity<ProductResponse> getProductByBarcode(@PathVariable String barcode) {
-        ProductResponse response = productService.getProductByBarcode(barcode);
         return ResponseEntity.ok(response);
     }
     

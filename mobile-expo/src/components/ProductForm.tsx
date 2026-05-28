@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { PRODUCT_TEXT_LIMITS } from '../database/productSql';
 import DatePicker from './DatePicker';
 import BarcodeScanner from './BarcodeScanner';
 import { ProductFormValues } from '../utils/productFormUtils';
@@ -59,6 +60,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           placeholder={`${t('products.productName')} *`}
           value={values.name}
           onChangeText={(text) => setField('name', text)}
+          maxLength={PRODUCT_TEXT_LIMITS.name}
         />
 
         <TextInput
@@ -67,6 +69,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           value={values.description}
           onChangeText={(text) => setField('description', text)}
           multiline
+          maxLength={PRODUCT_TEXT_LIMITS.description}
         />
 
         <View style={styles.barcodeContainer}>

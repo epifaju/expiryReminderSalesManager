@@ -6,7 +6,14 @@ import com.salesmanager.entity.Sale;
 import com.salesmanager.entity.StockMovement;
 import com.salesmanager.entity.SyncConflict;
 import com.salesmanager.entity.SyncLog;
+import com.salesmanager.entity.Organisation;
+import com.salesmanager.entity.Store;
 import com.salesmanager.exception.ConflictException;
+import com.salesmanager.exception.BadRequestException;
+import com.salesmanager.exception.ForbiddenException;
+import com.salesmanager.exception.NotFoundException;
+import com.salesmanager.exception.TenantContextMissingException;
+import com.salesmanager.repository.OrganisationMemberRepository;
 import com.salesmanager.repository.ProductRepository;
 import com.salesmanager.repository.SaleRepository;
 import com.salesmanager.repository.StockMovementRepository;
@@ -15,14 +22,20 @@ import com.salesmanager.repository.SyncLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.UUID;
+import com.salesmanager.security.TenantContext;
+import com.salesmanager.security.UserDetailsImpl;
 
 /**
  * Service de synchronisation bidirectionnelle
@@ -49,6 +62,15 @@ public class SyncService {
 
     @Autowired
     private SyncConflictRepository syncConflictRepository;
+
+    @Autowired
+    private OrganisationMemberRepository organisationMemberRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Value("${multitenancy.require-tenant-claims:false}")
+    private boolean requireTenantClaims;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -98,6 +120,9 @@ public class SyncService {
                     case FAILED -> {
                         response.setErrorCount(response.getErrorCount() + 1);
                         errors.add(createError(operation, result.getMessage()));
+                    }
+                    case SKIPPED -> {
+                        // no-op: utile pour ignorer une opération déjà appliquée / non pertinente
                     }
                 }
 
@@ -193,7 +218,10 @@ public class SyncService {
      * Traite une opération sur un produit avec détection de conflits
      */
     private String processProductOperation(SyncBatchRequest.SyncOperation operation) {
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) operation.getEntityData();
+        UUID organisationId = requireOrganisationId();
+        requireMembership(organisationId);
 
         switch (operation.getOperationType()) {
             case CREATE -> {
@@ -205,12 +233,13 @@ public class SyncService {
                 product.setStockQuantity(Integer.parseInt(data.get("stock_quantity").toString()));
                 product.setCreatedAt(LocalDateTime.now());
                 product.setUpdatedAt(LocalDateTime.now());
+                product.setOrganisation(entityManager.getReference(Organisation.class, organisationId));
 
                 Product saved = productRepository.save(product);
                 return saved.getId().toString();
             }
             case UPDATE -> {
-                Optional<Product> existing = productRepository.findById(Long.parseLong(operation.getEntityId()));
+                Optional<Product> existing = productRepository.findByIdAndOrganisation_Id(Long.parseLong(operation.getEntityId()), organisationId);
                 if (existing.isPresent()) {
                     Product currentProduct = existing.get();
 
@@ -250,11 +279,11 @@ public class SyncService {
                     Product saved = productRepository.save(currentProduct);
                     return saved.getId().toString();
                 } else {
-                    throw new IllegalArgumentException("Produit non trouvé: " + operation.getEntityId());
+                    throw new NotFoundException("Produit non trouvé: " + operation.getEntityId());
                 }
             }
             case DELETE -> {
-                Optional<Product> existing = productRepository.findById(Long.parseLong(operation.getEntityId()));
+                Optional<Product> existing = productRepository.findByIdAndOrganisation_Id(Long.parseLong(operation.getEntityId()), organisationId);
                 if (existing.isPresent()) {
                     // Vérifier si le produit a été modifié entre-temps (conflit UPDATE_DELETE)
                     Product currentProduct = existing.get();
@@ -277,7 +306,7 @@ public class SyncService {
                         }
                     }
 
-                    productRepository.deleteById(Long.parseLong(operation.getEntityId()));
+                    productRepository.delete(existing.get());
                 }
                 return operation.getEntityId();
             }
@@ -289,7 +318,11 @@ public class SyncService {
      * Traite une opération sur une vente
      */
     private String processSaleOperation(SyncBatchRequest.SyncOperation operation) {
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) operation.getEntityData();
+        UUID organisationId = requireOrganisationId();
+        requireMembership(organisationId);
+        UUID storeId = isElevated() ? TenantContext.getStoreId() : requireStoreId();
 
         switch (operation.getOperationType()) {
             case CREATE -> {
@@ -299,12 +332,21 @@ public class SyncService {
                 sale.setSaleDate(LocalDateTime.now());
                 sale.setCreatedAt(LocalDateTime.now());
                 sale.setUpdatedAt(LocalDateTime.now());
+                sale.setOrganisation(entityManager.getReference(Organisation.class, organisationId));
+                if (storeId != null) {
+                    sale.setStore(entityManager.getReference(Store.class, storeId));
+                }
+                // audit: utilisateur courant
+                UserDetailsImpl u = currentUserOrThrow();
+                sale.setCreatedBy(u.getUser());
 
                 Sale saved = saleRepository.save(sale);
                 return saved.getId().toString();
             }
             case UPDATE -> {
-                Optional<Sale> existing = saleRepository.findById(Long.parseLong(operation.getEntityId()));
+                Optional<Sale> existing = isElevated()
+                        ? saleRepository.findByIdAndOrganisation_Id(Long.parseLong(operation.getEntityId()), organisationId)
+                        : saleRepository.findByIdAndOrganisation_IdAndStore_Id(Long.parseLong(operation.getEntityId()), organisationId, requireStoreId());
                 if (existing.isPresent()) {
                     Sale sale = existing.get();
                     sale.setTotalAmount(new java.math.BigDecimal(data.get("amount").toString()));
@@ -314,11 +356,15 @@ public class SyncService {
                     Sale saved = saleRepository.save(sale);
                     return saved.getId().toString();
                 } else {
-                    throw new IllegalArgumentException("Vente non trouvée: " + operation.getEntityId());
+                    throw new NotFoundException("Vente non trouvée: " + operation.getEntityId());
                 }
             }
             case DELETE -> {
-                saleRepository.deleteById(Long.parseLong(operation.getEntityId()));
+                Long id = Long.parseLong(operation.getEntityId());
+                Optional<Sale> existing = isElevated()
+                        ? saleRepository.findByIdAndOrganisation_Id(id, organisationId)
+                        : saleRepository.findByIdAndOrganisation_IdAndStore_Id(id, organisationId, requireStoreId());
+                existing.ifPresent(saleRepository::delete);
                 return operation.getEntityId();
             }
             default -> throw new IllegalArgumentException("Type d'opération non supporté");
@@ -329,12 +375,19 @@ public class SyncService {
      * Traite une opération sur un mouvement de stock
      */
     private String processStockMovementOperation(SyncBatchRequest.SyncOperation operation) {
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = (Map<String, Object>) operation.getEntityData();
+        UUID organisationId = requireOrganisationId();
+        requireMembership(organisationId);
 
         switch (operation.getOperationType()) {
             case CREATE -> {
                 StockMovement movement = new StockMovement();
-                movement.setProductId(Long.parseLong(data.get("product_id").toString()));
+                Long productId = Long.parseLong(data.get("product_id").toString());
+                // sécurité: le produit doit appartenir au tenant
+                productRepository.findByIdAndOrganisation_Id(productId, organisationId)
+                        .orElseThrow(() -> new NotFoundException("Produit non trouvé: " + productId));
+                movement.setProductId(productId);
                 movement.setQuantity(Integer.parseInt(data.get("quantity").toString()));
                 movement.setMovementType((String) data.get("movement_type"));
                 movement.setReason((String) data.get("reason"));
@@ -349,7 +402,10 @@ public class SyncService {
                         .findById(Long.parseLong(operation.getEntityId()));
                 if (existing.isPresent()) {
                     StockMovement movement = existing.get();
-                    movement.setProductId(Long.parseLong(data.get("product_id").toString()));
+                    Long productId = Long.parseLong(data.get("product_id").toString());
+                    productRepository.findByIdAndOrganisation_Id(productId, organisationId)
+                            .orElseThrow(() -> new NotFoundException("Produit non trouvé: " + productId));
+                    movement.setProductId(productId);
                     movement.setQuantity(Integer.parseInt(data.get("quantity").toString()));
                     movement.setMovementType((String) data.get("movement_type"));
                     movement.setReason((String) data.get("reason"));
@@ -358,11 +414,19 @@ public class SyncService {
                     StockMovement saved = stockMovementRepository.save(movement);
                     return saved.getId().toString();
                 } else {
-                    throw new IllegalArgumentException("Mouvement de stock non trouvé: " + operation.getEntityId());
+                    throw new NotFoundException("Mouvement de stock non trouvé: " + operation.getEntityId());
                 }
             }
             case DELETE -> {
-                stockMovementRepository.deleteById(Long.parseLong(operation.getEntityId()));
+                // pas de tenant_id -> on supprime uniquement si le mouvement pointe vers un produit du tenant
+                Long id = Long.parseLong(operation.getEntityId());
+                Optional<StockMovement> existing = stockMovementRepository.findById(id);
+                if (existing.isPresent()) {
+                    Long productId = existing.get().getProductId();
+                    productRepository.findByIdAndOrganisation_Id(productId, organisationId)
+                            .orElseThrow(() -> new ForbiddenException("Accès non autorisé à ce mouvement de stock"));
+                    stockMovementRepository.delete(existing.get());
+                }
                 return operation.getEntityId();
             }
             default -> throw new IllegalArgumentException("Type d'opération non supporté");
@@ -396,8 +460,11 @@ public class SyncService {
         LocalDateTime newestModification = null;
 
         // Récupération des entités modifiées par type
+        UUID organisationId = requireOrganisationId();
+        requireMembership(organisationId);
+        UUID storeId = isElevated() ? null : requireStoreId();
         if (request.getEntityTypes() == null || request.getEntityTypes().contains("product")) {
-            List<Product> modifiedProducts = productRepository.findByUpdatedAtAfter(since);
+            List<Product> modifiedProducts = productRepository.findByOrganisation_IdAndUpdatedAtAfter(organisationId, since);
             for (Product product : modifiedProducts) {
                 if (modifiedEntities.size() >= limit) {
                     response.setHasMore(true);
@@ -427,7 +494,9 @@ public class SyncService {
         }
 
         if (request.getEntityTypes() == null || request.getEntityTypes().contains("sale")) {
-            List<Sale> modifiedSales = saleRepository.findByUpdatedAtAfter(since);
+            List<Sale> modifiedSales = (storeId == null)
+                    ? saleRepository.findByOrganisation_IdAndUpdatedAtAfter(organisationId, since)
+                    : saleRepository.findByOrganisation_IdAndStore_IdAndUpdatedAtAfter(organisationId, storeId, since);
             for (Sale sale : modifiedSales) {
                 if (modifiedEntities.size() >= limit) {
                     response.setHasMore(true);
@@ -457,7 +526,7 @@ public class SyncService {
         }
 
         if (request.getEntityTypes() == null || request.getEntityTypes().contains("stock_movement")) {
-            List<StockMovement> modifiedMovements = stockMovementRepository.findByUpdatedAtAfter(since);
+            List<StockMovement> modifiedMovements = stockMovementRepository.findByOrganisationAndUpdatedAtAfter(organisationId, since);
             for (StockMovement movement : modifiedMovements) {
                 if (modifiedEntities.size() >= limit) {
                     response.setHasMore(true);
@@ -511,6 +580,65 @@ public class SyncService {
                 response.getTotalModified() + " entités modifiées en " + processingTime + "ms");
 
         return response;
+    }
+
+    private UUID requireOrganisationId() {
+        UUID orgId = TenantContext.getOrganisationId();
+        if (orgId == null) {
+            if (requireTenantClaims) {
+                throw new TenantContextMissingException("Missing tenant context (orgId) in JWT");
+            }
+            return UUID.fromString("00000000-0000-0000-0000-000000000001");
+        }
+        return orgId;
+    }
+
+    private UUID requireStoreId() {
+        UUID storeId = TenantContext.getStoreId();
+        if (storeId == null) {
+            throw new BadRequestException("Boutique requise pour la synchronisation");
+        }
+        return storeId;
+    }
+
+    private boolean isElevated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority();
+            return "ROLE_ADMIN".equals(role) || "ROLE_MANAGER".equals(role) || "ROLE_PLATFORM_ADMIN".equals(role);
+        });
+    }
+
+    private UserDetailsImpl currentUserOrThrow() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl u) {
+            return u;
+        }
+        throw new ForbiddenException("Utilisateur non authentifié");
+    }
+
+    private boolean isPlatformAdmin() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_PLATFORM_ADMIN".equals(a.getAuthority()));
+    }
+
+    private void requireMembership(UUID organisationId) {
+        if (isPlatformAdmin()) {
+            return;
+        }
+        Long userId = currentUserOrThrow().getId();
+        boolean isMember = organisationMemberRepository.findByUser_Id(userId).stream()
+                .anyMatch(m -> organisationId.equals(m.getOrganisation().getId()));
+        if (!isMember) {
+            throw new ForbiddenException("Accès non autorisé à cette organisation");
+        }
     }
 
     /**
@@ -739,6 +867,7 @@ public class SyncService {
             }
 
             // Informations supplémentaires
+            @SuppressWarnings("unchecked")
             Map<String, Object> localData = (Map<String, Object>) operation.getEntityData();
             String userId = localData.get("user_id") != null ? localData.get("user_id").toString() : "0";
             conflict.setUserId(Long.parseLong(userId));

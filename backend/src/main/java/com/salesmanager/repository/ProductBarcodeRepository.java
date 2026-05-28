@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Repository dédié à la recherche produit par code-barres (PRD §14).
@@ -13,4 +14,6 @@ import java.util.Optional;
 public interface ProductBarcodeRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByBarcodeAndIsActiveTrue(String barcode);
+
+    Optional<Product> findByBarcodeAndOrganisation_IdAndIsActiveTrue(String barcode, UUID organisationId);
 }

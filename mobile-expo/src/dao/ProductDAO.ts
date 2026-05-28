@@ -13,6 +13,14 @@ import {
   SyncStatus
 } from '../types/models';
 import { LocalProduct } from '../types/localProduct';
+import { barcodeLookupCandidates } from '../bluetooth/gs1BarcodeParser';
+import {
+  clampProductText,
+  productSelectSql,
+  PRODUCT_TEXT_LIMITS,
+} from '../database/productSql';
+
+export type { LocalProduct };
 
 /**
  * Classe DAO pour gérer les opérations sur les produits
@@ -97,7 +105,7 @@ export class ProductDAO {
       console.log('[ProductDAO] Recherche du produit:', id);
       
       const result = await this.db.executeSql(
-        'SELECT * FROM products WHERE id = ? AND is_deleted = 0',
+        `${productSelectSql('WHERE id = ? AND is_deleted = 0')}`,
         [id]
       );
 
@@ -117,45 +125,64 @@ export class ProductDAO {
   }
 
   /**
-   * Recherche un produit actif par code-barres (scanner Bluetooth / offline).
-   * @param barcode - Code-barres scanné
-   * @param userId - Filtre optionnel par utilisateur propriétaire
+   * Recherche une ligne locale par code-barres (y compris supprimée) pour upsert / éviter UNIQUE.
    */
-  public async findByBarcode(barcode: string, userId?: string): Promise<LocalProduct | null> {
+  public async findByBarcodeForUpsert(barcode: string): Promise<LocalProduct | null> {
+    const normalized = barcode.trim();
+    if (!normalized) {
+      return null;
+    }
+    const result = await this.db.executeSql(
+      `${productSelectSql('WHERE barcode = ? LIMIT 1')}`,
+      [normalized]
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    const row = result.rows.item(0);
+    return {
+      ...this.mapRowToProduct(row),
+      barcode: row.barcode ?? null,
+      category: row.category ?? null,
+    };
+  }
+
+  /**
+   * Recherche un produit actif par code-barres (scanner Bluetooth / offline).
+   * Un seul code-barres actif par appareil (pas de filtre user_id : évite UNIQUE vs recherche vide).
+   */
+  public async findByBarcode(barcode: string, _userId?: string): Promise<LocalProduct | null> {
     try {
-      const normalized = barcode.trim();
-      if (!normalized) {
+      const candidates = barcodeLookupCandidates(barcode);
+      if (candidates.length === 0) {
         return null;
       }
 
-      console.log('[ProductDAO] Recherche par code-barres:', normalized);
+      console.log('[ProductDAO] Recherche par code-barres:', candidates[0]);
 
-      let query = 'SELECT * FROM products WHERE barcode = ? AND is_deleted = 0';
-      const params: string[] = [normalized];
+      for (const code of candidates) {
+        const result = await this.db.executeSql(
+          `${productSelectSql('WHERE barcode = ? AND is_deleted = 0 LIMIT 1')}`,
+          [code]
+        );
 
-      if (userId) {
-        query += ' AND user_id = ?';
-        params.push(userId);
+        if (result.rows.length === 0) {
+          continue;
+        }
+
+        const row = result.rows.item(0);
+        const product: LocalProduct = {
+          ...this.mapRowToProduct(row),
+          barcode: row.barcode ?? null,
+          category: row.category ?? null,
+        };
+
+        console.log('[ProductDAO] Produit trouvé par code-barres:', product.name);
+        return product;
       }
 
-      query += ' LIMIT 1';
-
-      const result = await this.db.executeSql(query, params);
-
-      if (result.rows.length === 0) {
-        console.log('[ProductDAO] Aucun produit pour le code-barres:', normalized);
-        return null;
-      }
-
-      const row = result.rows.item(0);
-      const product: LocalProduct = {
-        ...this.mapRowToProduct(row),
-        barcode: row.barcode ?? null,
-        category: row.category ?? null,
-      };
-
-      console.log('[ProductDAO] Produit trouvé par code-barres:', product.name);
-      return product;
+      console.log('[ProductDAO] Aucun produit pour le code-barres:', candidates[0]);
+      return null;
     } catch (error) {
       console.error('[ProductDAO] Erreur findByBarcode:', error);
       throw new Error(`Échec de la recherche par code-barres: ${error}`);
@@ -169,15 +196,34 @@ export class ProductDAO {
    * @param offset - Décalage pour la pagination (optionnel)
    * @returns Liste des produits
    */
+  /**
+   * Tous les produits actifs SQLite (sans filtre user_id), aligné sur findByBarcode / scan.
+   */
+  public async listActiveForCatalog(): Promise<LocalProduct[]> {
+    const result = await this.db.executeSql(
+      `${productSelectSql('WHERE is_deleted = 0 ORDER BY updated_at DESC')}`
+    );
+    const products: LocalProduct[] = [];
+    for (let i = 0; i < result.rows.length; i++) {
+      const row = result.rows.item(i);
+      products.push({
+        ...this.mapRowToProduct(row),
+        barcode: row.barcode ?? null,
+        category: row.category ?? null,
+        purchase_price: row.purchase_price != null ? Number(row.purchase_price) : null,
+        description: row.description ?? null,
+      });
+    }
+    return products;
+  }
+
   public async getAll(userId: string, limit?: number, offset?: number): Promise<Product[]> {
     try {
       console.log('[ProductDAO] Récupération de tous les produits pour l\'utilisateur:', userId);
       
-      let query = `
-        SELECT * FROM products 
-        WHERE user_id = ? AND is_deleted = 0 
-        ORDER BY created_at DESC
-      `;
+      let query = productSelectSql(
+        'WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+      );
       const params: any[] = [userId];
 
       if (limit) {
@@ -288,10 +334,7 @@ export class ProductDAO {
     try {
       console.log('[ProductDAO] Recherche de produits avec critères:', criteria);
       
-      let query = `
-        SELECT * FROM products 
-        WHERE user_id = ? AND is_deleted = 0
-      `;
+      let query = productSelectSql('WHERE user_id = ? AND is_deleted = 0');
       const params: any[] = [criteria.userId];
 
       // Filtres optionnels
@@ -365,6 +408,20 @@ export class ProductDAO {
    * @param serverId - ID serveur après synchronisation (optionnel)
    * @returns true si la mise à jour a réussi
    */
+  /** Réinitialise le lien serveur (ex. changement d'organisation / produit introuvable en API). */
+  public async resetServerLink(id: string): Promise<boolean> {
+    try {
+      const result = await this.db.executeSql(
+        `UPDATE products SET sync_status = 'pending', server_id = NULL, updated_at = ? WHERE id = ?`,
+        [new Date().toISOString(), id]
+      );
+      return result.rowsAffected > 0;
+    } catch (error) {
+      console.error('[ProductDAO] Erreur resetServerLink:', error);
+      throw new Error(`Échec resetServerLink: ${error}`);
+    }
+  }
+
   public async updateSyncStatus(
     id: string, 
     syncStatus: SyncStatus, 
@@ -408,11 +465,12 @@ export class ProductDAO {
     try {
       console.log('[ProductDAO] Récupération des produits en attente de sync pour:', userId);
       
-      const result = await this.db.executeSql(`
-        SELECT * FROM products 
-        WHERE user_id = ? AND sync_status = 'pending' AND is_deleted = 0
-        ORDER BY created_at ASC
-      `, [userId]);
+      const result = await this.db.executeSql(
+        productSelectSql(
+          "WHERE user_id = ? AND sync_status = 'pending' AND is_deleted = 0 ORDER BY created_at ASC"
+        ),
+        [userId]
+      );
 
       const products: Product[] = [];
       for (let i = 0; i < result.rows.length; i++) {
@@ -510,8 +568,12 @@ export class ProductDAO {
       updated_at: row.updated_at,
       is_deleted: row.is_deleted,
       sync_status: row.sync_status,
-      user_id: row.user_id
-    };
+      user_id: row.user_id,
+      barcode: row.barcode ?? undefined,
+      category: row.category ?? undefined,
+      purchase_price: row.purchase_price != null ? Number(row.purchase_price) : undefined,
+      description: row.description ?? undefined,
+    } as Product;
   }
 }
 

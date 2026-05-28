@@ -2,12 +2,16 @@ package com.salesmanager.service;
 
 import com.salesmanager.dto.*;
 import com.salesmanager.entity.*;
+import com.salesmanager.exception.BadRequestException;
+import com.salesmanager.exception.NotFoundException;
 import com.salesmanager.exception.ProductNotFoundException;
+import com.salesmanager.exception.TenantContextMissingException;
 import com.salesmanager.repository.ProductRepository;
 import com.salesmanager.repository.SaleRepository;
-import com.salesmanager.repository.SaleItemRepository;
 import com.salesmanager.security.UserDetailsImpl;
+import com.salesmanager.security.TenantContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +25,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Service
 @Transactional
@@ -30,15 +37,22 @@ public class SaleService {
     @Autowired
     private SaleRepository saleRepository;
     
-    @Autowired
-    private SaleItemRepository saleItemRepository;
+    // NOTE: SaleItemRepository non utilisé actuellement (cascade via Sale).
     
     @Autowired
     private ProductRepository productRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Value("${multitenancy.require-tenant-claims:false}")
+    private boolean requireTenantClaims;
     
     public SaleResponse createSale(SaleRequest saleRequest) {
         // Get current user
         User currentUser = getCurrentUser();
+        UUID organisationId = requireOrganisationId();
+        UUID storeId = TenantContext.getStoreId();
         
         // Create sale entity
         Sale sale = new Sale();
@@ -51,6 +65,10 @@ public class SaleService {
         sale.setCustomerEmail(saleRequest.getCustomerEmail());
         sale.setNotes(saleRequest.getNotes());
         sale.setCreatedBy(currentUser);
+        sale.setOrganisation(entityManager.getReference(Organisation.class, organisationId));
+        if (storeId != null) {
+            sale.setStore(entityManager.getReference(Store.class, storeId));
+        }
         sale.setStatus(Sale.SaleStatus.COMPLETED);
         
         // Process sale items
@@ -87,9 +105,10 @@ public class SaleService {
     }
 
     private Product resolveProduct(SaleItemRequest itemRequest) {
+        UUID organisationId = requireOrganisationId();
         Long productId = itemRequest.getProductId();
         if (productId != null) {
-            Optional<Product> byId = productRepository.findById(productId);
+            Optional<Product> byId = productRepository.findByIdAndOrganisation_Id(productId, organisationId);
             if (byId.isPresent()) {
                 return byId.get();
             }
@@ -97,7 +116,7 @@ public class SaleService {
 
         String barcode = itemRequest.getBarcode();
         if (barcode != null && !barcode.isBlank()) {
-            Optional<Product> byBarcode = productRepository.findByBarcode(barcode.trim());
+            Optional<Product> byBarcode = productRepository.findByBarcodeAndOrganisation_Id(barcode.trim(), organisationId);
             if (byBarcode.isPresent()) {
                 return byBarcode.get();
             }
@@ -113,23 +132,25 @@ public class SaleService {
     }
     
     public SaleResponse getSaleById(Long id) {
-        Sale sale = saleRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Sale not found with id: " + id));
+        UUID organisationId = requireOrganisationId();
+        Sale sale = saleRepository.findByIdAndOrganisation_Id(id, organisationId)
+            .orElseThrow(() -> new NotFoundException("Sale not found with id: " + id));
         return convertToResponse(sale);
     }
     
     public SaleResponse getSaleBySaleNumber(String saleNumber) {
         Sale sale = saleRepository.findBySaleNumber(saleNumber)
-            .orElseThrow(() -> new RuntimeException("Sale not found with number: " + saleNumber));
+            .orElseThrow(() -> new NotFoundException("Sale not found with number: " + saleNumber));
         return convertToResponse(sale);
     }
     
     public Page<SaleResponse> getAllSales(int page, int size, String sortBy, String sortDir) {
+        UUID organisationId = requireOrganisationId();
         Sort sort = sortDir.equalsIgnoreCase("desc") ? 
             Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Sale> sales = saleRepository.findAll(pageable);
+        Page<Sale> sales = saleRepository.findByOrganisation_Id(organisationId, pageable);
         
         return sales.map(this::convertToResponse);
     }
@@ -168,7 +189,7 @@ public class SaleService {
     
     public SaleResponse updateSaleStatus(Long id, Sale.SaleStatus status) {
         Sale sale = saleRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Sale not found with id: " + id));
+            .orElseThrow(() -> new NotFoundException("Sale not found with id: " + id));
         
         // If cancelling or refunding, restore stock
         if ((status == Sale.SaleStatus.CANCELLED || status == Sale.SaleStatus.REFUNDED) 
@@ -184,7 +205,7 @@ public class SaleService {
     
     public void deleteSale(Long id) {
         Sale sale = saleRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Sale not found with id: " + id));
+            .orElseThrow(() -> new NotFoundException("Sale not found with id: " + id));
         
         // Restore stock if sale was completed
         if (sale.getStatus() == Sale.SaleStatus.COMPLETED) {
@@ -196,35 +217,106 @@ public class SaleService {
     
     // Analytics methods
     public BigDecimal getTotalSalesAmount(LocalDateTime startDate, LocalDateTime endDate) {
-        BigDecimal total = saleRepository.getTotalSalesAmount(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        BigDecimal total;
+        if (isElevated()) {
+            total = saleRepository.getTotalSalesAmount(organisationId, startDate, endDate);
+        } else {
+            UUID storeId = requireStoreId();
+            total = saleRepository.getTotalSalesAmountByStore(organisationId, storeId, startDate, endDate);
+        }
         return total != null ? total : BigDecimal.ZERO;
     }
     
     public Long getTotalSalesCount(LocalDateTime startDate, LocalDateTime endDate) {
-        Long count = saleRepository.getTotalSalesCount(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        Long count;
+        if (isElevated()) {
+            count = saleRepository.getTotalSalesCount(organisationId, startDate, endDate);
+        } else {
+            UUID storeId = requireStoreId();
+            count = saleRepository.getTotalSalesCountByStore(organisationId, storeId, startDate, endDate);
+        }
         return count != null ? count : 0L;
     }
     
     public BigDecimal getAverageSaleAmount(LocalDateTime startDate, LocalDateTime endDate) {
-        BigDecimal average = saleRepository.getAverageSaleAmount(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        BigDecimal average;
+        if (isElevated()) {
+            average = saleRepository.getAverageSaleAmount(organisationId, startDate, endDate);
+        } else {
+            UUID storeId = requireStoreId();
+            average = saleRepository.getAverageSaleAmountByStore(organisationId, storeId, startDate, endDate);
+        }
         return average != null ? average : BigDecimal.ZERO;
     }
     
     public List<Object[]> getPaymentMethodStats(LocalDateTime startDate, LocalDateTime endDate) {
-        return saleRepository.getPaymentMethodStats(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        if (isElevated()) {
+            return saleRepository.getPaymentMethodStats(organisationId, startDate, endDate);
+        }
+        UUID storeId = requireStoreId();
+        return saleRepository.getPaymentMethodStatsByStore(organisationId, storeId, startDate, endDate);
     }
     
     public List<Object[]> getDailySalesStats(LocalDateTime startDate, LocalDateTime endDate) {
-        return saleRepository.getDailySalesStats(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        if (isElevated()) {
+            return saleRepository.getDailySalesStats(organisationId, startDate, endDate);
+        }
+        UUID storeId = requireStoreId();
+        return saleRepository.getDailySalesStatsByStore(organisationId, storeId, startDate, endDate);
     }
     
     public List<Object[]> getMonthlySalesStats(LocalDateTime startDate, LocalDateTime endDate) {
-        return saleRepository.getMonthlySalesStats(startDate, endDate);
+        UUID organisationId = requireOrganisationId();
+        if (isElevated()) {
+            return saleRepository.getMonthlySalesStats(organisationId, startDate, endDate);
+        }
+        UUID storeId = requireStoreId();
+        return saleRepository.getMonthlySalesStatsByStore(organisationId, storeId, startDate, endDate);
     }
     
     public List<Object[]> getTopCustomers(LocalDateTime startDate, LocalDateTime endDate, int limit) {
+        UUID organisationId = requireOrganisationId();
         Pageable pageable = PageRequest.of(0, limit);
-        return saleRepository.getTopCustomers(startDate, endDate, pageable);
+        if (isElevated()) {
+            return saleRepository.getTopCustomers(organisationId, startDate, endDate, pageable);
+        }
+        UUID storeId = requireStoreId();
+        return saleRepository.getTopCustomersByStore(organisationId, storeId, startDate, endDate, pageable);
+    }
+
+    private UUID requireOrganisationId() {
+        UUID orgId = TenantContext.getOrganisationId();
+        if (orgId == null) {
+            if (requireTenantClaims) {
+                throw new TenantContextMissingException("Missing tenant context (orgId) in JWT");
+            }
+            return UUID.fromString("00000000-0000-0000-0000-000000000001");
+        }
+        return orgId;
+    }
+
+    private UUID requireStoreId() {
+        UUID storeId = TenantContext.getStoreId();
+        if (storeId == null) {
+            throw new BadRequestException("Boutique requise pour accéder aux rapports");
+        }
+        return storeId;
+    }
+
+    private boolean isElevated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream().anyMatch(a -> {
+            String role = a.getAuthority();
+            return "ROLE_ADMIN".equals(role) || "ROLE_MANAGER".equals(role) || "ROLE_PLATFORM_ADMIN".equals(role);
+        });
     }
     
     // Helper methods

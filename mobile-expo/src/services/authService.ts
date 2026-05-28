@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeApiClient, updateApiClientBaseUrl, setTokenProvider } from './apiClient';
+import apiClient, { updateApiClientBaseUrl, setTokenProvider, setTenantProvider } from './apiClient';
 import { getApiUrls } from '../config/apiConfig';
 import profileService from './profileService';
 import { normalizeCurrency, SupportedCurrency } from '../types/currency';
 import { persistCurrency, setGlobalCurrency, clearCurrencyCache } from '../utils/currencyStore';
+import { parseJwtTenantClaims } from '../utils/jwtTenant';
 
 const API_URLS = getApiUrls();
 
@@ -35,16 +36,25 @@ export interface User {
 export interface AuthResponse {
   token: string;
   user: User;
+  organisationId?: string;
+  storeId?: string;
+}
+
+export interface TenantInfo {
+  organisationId: string | null;
+  storeId: string | null;
 }
 
 class AuthService {
   private token: string | null = null;
   private user: User | null = null;
+  private tenant: TenantInfo = { organisationId: null, storeId: null };
   private authListeners: Array<() => void> = [];
 
   constructor() {
     // Set up the token provider callback to break the circular dependency
     setTokenProvider(() => this.getToken());
+    setTenantProvider(() => this.getTenant());
   }
 
   // Initialize auth service with persistent storage
@@ -55,10 +65,17 @@ class AuthService {
       // Récupérer le token et l'utilisateur depuis AsyncStorage
       const token = await AsyncStorage.getItem('auth_token');
       const userStr = await AsyncStorage.getItem('auth_user');
+      const organisationId = await AsyncStorage.getItem('auth_organisation_id');
+      const storeId = await AsyncStorage.getItem('auth_store_id');
       
       if (token && userStr) {
         this.token = token;
         this.user = JSON.parse(userStr);
+        this.tenant = {
+          organisationId: organisationId || null,
+          storeId: storeId || null,
+        };
+        await this.syncTenantFromToken(token);
         if (this.user?.preferredCurrency) {
           setGlobalCurrency(normalizeCurrency(this.user.preferredCurrency));
         }
@@ -236,6 +253,11 @@ class AuthService {
       }
       
       this.token = authResponse.token;
+      this.tenant = {
+        organisationId: authResponse.organisationId ?? null,
+        storeId: authResponse.storeId ?? null,
+      };
+      await this.syncTenantFromToken(authResponse.token);
       
       // Vérifier si les données utilisateur sont dans un objet 'user' ou au même niveau
       if (authResponse.user) {
@@ -267,6 +289,16 @@ class AuthService {
       // Persister les données dans AsyncStorage (this.token est garanti non-null ici)
       await AsyncStorage.setItem('auth_token', this.token as string);
       await AsyncStorage.setItem('auth_user', JSON.stringify(this.user));
+      if (this.tenant.organisationId) {
+        await AsyncStorage.setItem('auth_organisation_id', this.tenant.organisationId);
+      } else {
+        await AsyncStorage.removeItem('auth_organisation_id');
+      }
+      if (this.tenant.storeId) {
+        await AsyncStorage.setItem('auth_store_id', this.tenant.storeId);
+      } else {
+        await AsyncStorage.removeItem('auth_store_id');
+      }
       this.notifyAuthChange();
       
       console.log('💾 Token stocké avec persistance:', this.token ? `${this.token.substring(0, 20)}...` : 'ERREUR');
@@ -284,10 +316,13 @@ class AuthService {
       // Clear memory
       this.token = null;
       this.user = null;
+      this.tenant = { organisationId: null, storeId: null };
       
       // Clear AsyncStorage
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('auth_user');
+      await AsyncStorage.removeItem('auth_organisation_id');
+      await AsyncStorage.removeItem('auth_store_id');
       if (userId != null) {
         await clearCurrencyCache(userId);
       }
@@ -314,6 +349,39 @@ class AuthService {
   // Get current user
   getUser(): User | null {
     return this.user;
+  }
+
+  getTenant(): TenantInfo {
+    return this.tenant;
+  }
+
+  getOrganisationId(): string | null {
+    return this.tenant.organisationId;
+  }
+
+  getStoreId(): string | null {
+    return this.tenant.storeId;
+  }
+
+  /** Aligne AsyncStorage / tenant sur les claims du JWT (orgId/storeId). */
+  private async syncTenantFromToken(token: string | null | undefined): Promise<void> {
+    if (!token) {
+      return;
+    }
+    const claims = parseJwtTenantClaims(token);
+    if (claims.organisationId) {
+      this.tenant.organisationId = claims.organisationId;
+      await AsyncStorage.setItem('auth_organisation_id', claims.organisationId);
+    }
+    if (claims.storeId) {
+      this.tenant.storeId = claims.storeId;
+      await AsyncStorage.setItem('auth_store_id', claims.storeId);
+    }
+  }
+
+  async switchStore(organisationId: string, storeId: string): Promise<void> {
+    const response = await apiClient.post('/auth/switch-store', { organisationId, storeId });
+    await this.storeAuthData(response.data);
   }
 
   updateLocalUser(updates: Partial<User>): void {

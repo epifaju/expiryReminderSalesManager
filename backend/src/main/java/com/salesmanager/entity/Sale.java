@@ -66,6 +66,14 @@ public class Sale {
     @JoinColumn(name = "created_by")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organisation_id", nullable = false)
+    private Organisation organisation;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
     
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SaleItem> saleItems = new ArrayList<>();
@@ -262,6 +270,22 @@ public class Sale {
     
     public void setCreatedBy(User createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public Organisation getOrganisation() {
+        return organisation;
+    }
+
+    public void setOrganisation(Organisation organisation) {
+        this.organisation = organisation;
+    }
+
+    public Store getStore() {
+        return store;
+    }
+
+    public void setStore(Store store) {
+        this.store = store;
     }
     
     public List<SaleItem> getSaleItems() {

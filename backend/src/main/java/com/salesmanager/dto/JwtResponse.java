@@ -9,5 +9,7 @@ public record JwtResponse(
     String email,
     List<String> roles,
     String preferredLanguage,
-    String preferredCurrency
+    String preferredCurrency,
+    String organisationId,
+    String storeId
 ) {}

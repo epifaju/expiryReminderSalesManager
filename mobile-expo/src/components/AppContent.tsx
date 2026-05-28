@@ -57,6 +57,20 @@ export default function AppContent() {
     };
 
     initializeAuth();
+
+    const unsubscribe = authService.onAuthChange(() => {
+      const tokenValue = authService.getToken();
+      const isAuthed = authService.isAuthenticated();
+      setIsLoggedIn(isAuthed);
+      setToken(tokenValue || '');
+      if (!isAuthed) {
+        setActiveTab('dashboard');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const login = async () => {
@@ -135,7 +149,7 @@ export default function AppContent() {
       case 'products':
         return <ProductsScreen token={token} />;
       case 'sales':
-        return <SalesScreen token={token} />;
+        return <SalesScreen token={token} onNavigate={setActiveTab} />;
       case 'receipts':
         return <ReceiptsScreen />;
       case 'reports':

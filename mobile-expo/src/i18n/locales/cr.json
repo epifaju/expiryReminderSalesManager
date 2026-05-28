@@ -72,7 +72,17 @@
     "contactSupport": "Kontata suporte",
     "about": "Sobre",
     "version": "Verson",
-    "logoutConfirm": "Bu siguru ki bu kere sai?"
+    "logoutConfirm": "Bu siguru ki bu kere sai?",
+    "organisationStore": "Organizason & loja",
+    "organisation": "Organizason",
+    "store": "Loja",
+    "currentSelection": "Seleson atual",
+    "refresh": "Atualiza",
+    "noStores": "N ka ten loja pa es organizason.",
+    "noOrganisations": "N ka ten organizason pa bu konta.",
+    "storeCreatedAndSelected": "Loja « {{name}} » kriada i selesionada.",
+    "storeCreatedSelectManually": "Loja « {{name}} » kriada. Selesiona na Organizason & loja.",
+    "saved": "Guardadu"
   },
   "currency": {
     "title": "Moni",
@@ -206,6 +216,7 @@
     "tapForDetail": "Toka pa odja detalhi",
     "local_pending_title": "Produtu na spera di sincronizason",
     "local_pending_message": "Es kódigu di barra dja teni nesti dispozitivu mas inda ka sta na servidor. Sincroniza pa uza na un logu.",
+    "localOnlyListBadge": "Na dispozitivu · sync na spera",
     "syncNow": "Sincroniza agora",
     "syncSuccess": "Produtu sincronizadu ku servidor",
     "syncFailed": "Falha na sincronizason. Verifika Internet i si backend sta ativu.",
@@ -416,6 +427,8 @@
     "connectionError": "Ka pode konekta na servidor",
     "timeoutError": "Servidor ta demora mutu pa respondi. Virifica bu koneson rede.",
     "authFailed": "Nomi di utilizador o senha eradu",
+    "sessionExpired": "Bu sesson kaba. Por favor, faz login dinovu.",
+    "accessDenied": "Azesu negadu. Bu ka ten permison pa es organizason.",
     "serverUnavailable": "Eru di servidor. Tenta mas tardu.",
     "networkUnavailable": "Eru di rede. Virifica bu koneson internet i si servidor backend ta funsona.",
     "serverConnection": "Ka pode konekta na servidor. Siguru ki:\n\n• Servidor backend ta funsona\n• Bu koneson rede ta funsona\n• Emulador pode atxa rede"

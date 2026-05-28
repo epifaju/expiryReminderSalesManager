@@ -59,7 +59,15 @@ class ReceiptService {
       const response = await apiClient.post(`${this.baseUrl}/create/${request.saleId}`, request);
       
       console.log('✅ Reçu créé avec succès:', response.data);
-      return response.data;
+      // Compat backend: ancien format {success,receipt,message} vs nouveau format ReceiptResponse direct
+      if (response.data?.receipt) {
+        return response.data;
+      }
+      return {
+        success: true,
+        receipt: response.data,
+        message: 'Reçu créé avec succès',
+      };
     } catch (error: any) {
       console.error('❌ Erreur création reçu:', error);
       throw new Error(error.response?.data?.error || 'Erreur lors de la création du reçu');
@@ -76,7 +84,13 @@ class ReceiptService {
       const response = await apiClient.get(this.baseUrl);
       
       console.log('✅ Reçus récupérés:', response.data);
-      return response.data;
+      if (Array.isArray(response.data)) {
+        return { receipts: response.data };
+      }
+      if (response.data?.receipts) {
+        return response.data;
+      }
+      return { receipts: [] };
     } catch (error: any) {
       console.error('❌ Erreur récupération reçus:', error);
       throw new Error(error.response?.data?.error || 'Erreur lors de la récupération des reçus');

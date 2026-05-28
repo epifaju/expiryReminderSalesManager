@@ -33,7 +33,7 @@ public class ProductBarcodeController {
     }
 
     @GetMapping("/barcode/{barcode}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MODERATOR') or hasRole('USER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PLATFORM_ADMIN') or hasRole('MODERATOR')")
     public ResponseEntity<ApiResponse<ProductDto>> findByBarcode(
             @PathVariable String barcode,
             Locale locale) {

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Repository pour les mouvements de stock
@@ -161,6 +162,10 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
      * @return Liste des mouvements modifiés
      */
     List<StockMovement> findByUpdatedAtAfter(LocalDateTime timestamp);
+
+    @Query("SELECT sm FROM StockMovement sm JOIN Product p ON p.id = sm.productId WHERE p.organisation.id = :organisationId AND sm.updatedAt > :timestamp")
+    List<StockMovement> findByOrganisationAndUpdatedAtAfter(@Param("organisationId") UUID organisationId,
+                                                            @Param("timestamp") LocalDateTime timestamp);
 
     /**
      * Trouve les mouvements créés après un timestamp

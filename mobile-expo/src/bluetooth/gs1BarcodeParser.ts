@@ -138,3 +138,47 @@ export function parseScannedBarcode(raw: string): ParsedScannedBarcode {
 export function extractRetailBarcode(raw: string): string {
   return parseScannedBarcode(raw).barcode;
 }
+
+/** Variantes à tester côté API / catalogue (EAN-13, GTIN-14, GS1). */
+export function barcodeLookupCandidates(raw: string): string[] {
+  const set = new Set<string>();
+  const primary = extractRetailBarcode(raw);
+  if (primary) {
+    set.add(primary);
+  }
+  const trimmed = raw.trim();
+  if (trimmed) {
+    set.add(trimmed);
+  }
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits) {
+    set.add(digits);
+    if (digits.length > 16 && digits.startsWith('01') && digits.length >= 16) {
+      const gtin14 = digits.substring(2, 16);
+      set.add(gtin14);
+      if (gtin14.startsWith('0')) {
+        set.add(gtin14.substring(1, 14));
+      }
+    }
+    if (digits.length === 14 && digits.startsWith('0')) {
+      set.add(digits.substring(1, 14));
+    }
+    if (digits.length === 13) {
+      set.add(`0${digits}`);
+    }
+    const stripped = digits.replace(/^0+/, '');
+    if (stripped) {
+      set.add(stripped);
+    }
+  }
+  return [...set];
+}
+
+export function barcodesEquivalent(a: string, b: string): boolean {
+  if (!a || !b) {
+    return false;
+  }
+  const ca = barcodeLookupCandidates(a);
+  const cb = barcodeLookupCandidates(b);
+  return ca.some((x) => cb.includes(x));
+}

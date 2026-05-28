@@ -13,10 +13,13 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DatePicker from '../DatePicker';
+import { PRODUCT_TEXT_LIMITS } from '../../database/productSql';
 
 export interface QuickProductFormData {
   barcode: string;
   name: string;
+  description?: string;
+  purchasePrice: number;
   sellingPrice: number;
   stockQuantity: number;
   expiryDate?: string;
@@ -40,6 +43,8 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [stockQuantity, setStockQuantity] = useState('1');
   const [category, setCategory] = useState('');
@@ -52,6 +57,12 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
   useEffect(() => {
     if (visible) {
       setName(prefill?.name ?? '');
+      setDescription(prefill?.description ?? '');
+      setPurchasePrice(
+        prefill?.purchasePrice !== undefined && prefill?.purchasePrice !== null
+          ? String(prefill.purchasePrice)
+          : ''
+      );
       setSellingPrice(
         prefill?.sellingPrice !== undefined && prefill?.sellingPrice !== null
           ? String(prefill.sellingPrice)
@@ -79,9 +90,17 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
     if (!normalizedBarcode) {
       return;
     }
-    const price = parseFloat(sellingPrice);
+    const salePrice = parseFloat(sellingPrice);
+    const buyPriceRaw = purchasePrice.trim() ? parseFloat(purchasePrice) : salePrice;
     const stock = parseInt(stockQuantity, 10);
-    if (!price || price <= 0 || Number.isNaN(stock) || stock < 0) {
+    if (
+      !salePrice ||
+      salePrice <= 0 ||
+      Number.isNaN(buyPriceRaw) ||
+      buyPriceRaw < 0 ||
+      Number.isNaN(stock) ||
+      stock < 0
+    ) {
       return;
     }
 
@@ -91,7 +110,9 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
       await onCreateProduct({
         barcode: normalizedBarcode,
         name: name.trim(),
-        sellingPrice: price,
+        description: description.trim() || undefined,
+        purchasePrice: buyPriceRaw,
+        sellingPrice: salePrice,
         stockQuantity: stock,
         expiryDate: expiryDate || undefined,
         category: category.trim() || undefined,
@@ -154,6 +175,26 @@ const UnknownBarcodeModal: React.FC<UnknownBarcodeModalProps> = ({
               value={name}
               onChangeText={setName}
               placeholder={t('products.productName')}
+            />
+
+            <Text style={styles.label}>{t('products.description')}</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t('products.description')}
+              multiline
+              numberOfLines={3}
+              maxLength={PRODUCT_TEXT_LIMITS.description}
+            />
+
+            <Text style={styles.label}>{t('products.purchasePrice')} *</Text>
+            <TextInput
+              style={styles.input}
+              value={purchasePrice}
+              onChangeText={setPurchasePrice}
+              keyboardType="numeric"
+              placeholder="0"
             />
 
             <Text style={styles.label}>{t('products.sellingPrice')} *</Text>
@@ -248,6 +289,10 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#fff',
+  },
+  textArea: {
+    minHeight: 72,
+    textAlignVertical: 'top',
   },
   readonly: {
     backgroundColor: '#f5f5f5',

@@ -8,10 +8,15 @@ let isInitialized = false;
 
 // Token provider function - will be set by authService
 let getTokenCallback: (() => string | null) | null = null;
+let getTenantCallback: (() => { organisationId: string | null; storeId: string | null }) | null = null;
 
 // Function to set the token provider callback
 const setTokenProvider = (callback: () => string | null) => {
   getTokenCallback = callback;
+};
+
+const setTenantProvider = (callback: () => { organisationId: string | null; storeId: string | null }) => {
+  getTenantCallback = callback;
 };
 
 // Function to test API connectivity
@@ -76,16 +81,32 @@ const updateApiClientBaseUrl = (newUrl: string) => {
 apiClient.interceptors.request.use(
   (config) => {
     const token = getTokenCallback ? getTokenCallback() : null;
-    console.log('🔑 Token disponible:', token ? 'OUI' : 'NON', token ? `(${token.substring(0, 20)}...)` : '');
-    
+    const quiet = Boolean(config.silentNotFound);
+
+    if (!quiet) {
+      console.log('🔑 Token disponible:', token ? 'OUI' : 'NON', token ? `(${token.substring(0, 20)}...)` : '');
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('📤 En-tête Authorization ajouté');
-    } else {
+      if (!quiet) {
+        console.log('📤 En-tête Authorization ajouté');
+      }
+    } else if (!quiet) {
       console.warn('⚠️ Pas de token d\'authentification disponible pour cette requête');
     }
+
+    const tenant = getTenantCallback ? getTenantCallback() : null;
+    if (tenant?.organisationId) {
+      config.headers['X-Organisation-Id'] = tenant.organisationId;
+    }
+    if (tenant?.storeId) {
+      config.headers['X-Store-Id'] = tenant.storeId;
+    }
     
-    console.log('🔗 API Request:', config.method?.toUpperCase(), config.url);
+    if (!config.silentNotFound) {
+      console.log('🔗 API Request:', config.method?.toUpperCase(), config.url);
+    }
     return config;
   },
   (error) => {
@@ -94,15 +115,27 @@ apiClient.interceptors.request.use(
   }
 );
 
+const isSilentNotFound = (config: { silentNotFound?: boolean; url?: string }, status?: number) =>
+  status === 404 && Boolean(config.silentNotFound);
+
 // Response interceptor for better error handling
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', response.status, response.config.url);
+    if (!isSilentNotFound(response.config, response.status)) {
+      console.log('✅ API Response:', response.status, response.config.url);
+    }
     return response;
   },
   (error) => {
+    const status = error.response?.status;
+    const config = error.config ?? {};
+
+    if (isSilentNotFound(config, status)) {
+      return Promise.reject(error);
+    }
+
     console.error('❌ API Error:', error.message);
-    
+
     if (error.response) {
       console.error('📄 Error response:', error.response.status, error.response.data);
     }
@@ -127,4 +160,4 @@ const initializeApiClient = async (): Promise<void> => {
 };
 
 export default apiClient;
-export { findWorkingApiUrl, updateApiClientBaseUrl, testApiConnection, initializeApiClient, setTokenProvider };
+export { findWorkingApiUrl, updateApiClientBaseUrl, testApiConnection, initializeApiClient, setTokenProvider, setTenantProvider };

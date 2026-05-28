@@ -3,42 +3,41 @@ package com.salesmanager.service;
 import com.salesmanager.dto.ProductDto;
 import com.salesmanager.entity.Product;
 import com.salesmanager.exception.ResourceNotFoundException;
-import com.salesmanager.repository.ProductBarcodeRepository;
+import com.salesmanager.security.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 public class ProductBarcodeService {
 
-    private final ProductBarcodeRepository productBarcodeRepository;
+    private final ProductBarcodeLookupService productBarcodeLookupService;
 
-    public ProductBarcodeService(ProductBarcodeRepository productBarcodeRepository) {
-        this.productBarcodeRepository = productBarcodeRepository;
+    public ProductBarcodeService(ProductBarcodeLookupService productBarcodeLookupService) {
+        this.productBarcodeLookupService = productBarcodeLookupService;
     }
 
     public ProductDto findByBarcode(String barcode) {
-        String normalized = normalizeBarcode(barcode);
-        if (normalized.isEmpty()) {
+        if (barcode == null || barcode.isBlank()) {
             throw new ResourceNotFoundException(
                     "error.product.notfound",
                     "Code-barres invalide ou vide");
         }
 
-        Product product = productBarcodeRepository
-                .findByBarcodeAndIsActiveTrue(normalized)
+        UUID organisationId = TenantContext.getOrganisationId();
+        if (organisationId == null) {
+            organisationId = TenantResolutionService.DEFAULT_ORG_ID;
+        }
+
+        Product product = productBarcodeLookupService
+                .findActiveByBarcode(organisationId, barcode)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "error.product.notfound",
-                        "Produit non trouvé avec le code-barres: " + normalized));
+                        "Produit non trouvé avec le code-barres: " + barcode));
 
         return toDto(product);
-    }
-
-    private static String normalizeBarcode(String barcode) {
-        if (barcode == null) {
-            return "";
-        }
-        return barcode.trim();
     }
 
     private ProductDto toDto(Product product) {
