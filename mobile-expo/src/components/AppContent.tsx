@@ -25,6 +25,13 @@ import AppScannerHost from './bluetooth/AppScannerHost';
 
 type TabType = 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'expiring' | 'settings';
 
+export type AppNavigateOptions = {
+  /** Ouvre l'écran Ventes sur l'onglet création (depuis l'accueil). */
+  salesTab?: 'list' | 'new';
+  /** Ouvre l'écran Produits sur le formulaire d'ajout (depuis l'accueil). */
+  productsMode?: 'list' | 'add';
+};
+
 export default function AppContent() {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -33,6 +40,8 @@ export default function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [salesInitialTab, setSalesInitialTab] = useState<'list' | 'new'>('list');
+  const [productsInitialMode, setProductsInitialMode] = useState<'list' | 'add'>('list');
   const [showRegister, setShowRegister] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [appReady, setAppReady] = useState(false);
@@ -142,14 +151,30 @@ export default function AppContent() {
     }
   };
 
+  const navigate = (tab: TabType, options?: AppNavigateOptions) => {
+    if (tab === 'sales') {
+      setSalesInitialTab(options?.salesTab ?? 'list');
+    }
+    if (tab === 'products') {
+      setProductsInitialMode(options?.productsMode ?? 'list');
+    }
+    setActiveTab(tab);
+  };
+
   const renderScreen = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardScreen token={token} onNavigate={setActiveTab} isActive={true} />;
+        return <DashboardScreen token={token} onNavigate={navigate} isActive={true} />;
       case 'products':
-        return <ProductsScreen token={token} />;
+        return <ProductsScreen token={token} initialMode={productsInitialMode} />;
       case 'sales':
-        return <SalesScreen token={token} onNavigate={setActiveTab} />;
+        return (
+          <SalesScreen
+            token={token}
+            onNavigate={navigate}
+            initialTab={salesInitialTab}
+          />
+        );
       case 'receipts':
         return <ReceiptsScreen />;
       case 'reports':
@@ -159,7 +184,7 @@ export default function AppContent() {
       case 'settings':
         return <SettingsScreen onLogout={logout} />;
       default:
-        return <DashboardScreen token={token} onNavigate={setActiveTab} isActive={true} />;
+        return <DashboardScreen token={token} onNavigate={navigate} isActive={true} />;
     }
   };
 
@@ -262,7 +287,7 @@ export default function AppContent() {
       }]}>
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'dashboard' && { backgroundColor: theme.isDark ? '#3a3a3a' : '#f0f8ff' }]}
-          onPress={() => setActiveTab('dashboard')}
+          onPress={() => navigate('dashboard')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'dashboard' && styles.activeNavIcon]}>🏠</Text>
@@ -275,7 +300,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'products' && styles.activeNavItem]}
-          onPress={() => setActiveTab('products')}
+          onPress={() => navigate('products')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'products' && styles.activeNavIcon]}>📦</Text>
@@ -284,7 +309,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'sales' && styles.activeNavItem]}
-          onPress={() => setActiveTab('sales')}
+          onPress={() => navigate('sales')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'sales' && styles.activeNavIcon]}>🛒</Text>
@@ -293,7 +318,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'receipts' && styles.activeNavItem]}
-          onPress={() => setActiveTab('receipts')}
+          onPress={() => navigate('receipts')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'receipts' && styles.activeNavIcon]}>🧾</Text>
@@ -302,7 +327,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'reports' && styles.activeNavItem]}
-          onPress={() => setActiveTab('reports')}
+          onPress={() => navigate('reports')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'reports' && styles.activeNavIcon]}>📊</Text>
@@ -311,7 +336,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'expiring' && styles.activeNavItem]}
-          onPress={() => setActiveTab('expiring')}
+          onPress={() => navigate('expiring')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'expiring' && styles.activeNavIcon]}>⚠️</Text>
@@ -320,7 +345,7 @@ export default function AppContent() {
         
         <TouchableOpacity
           style={[styles.navItem, activeTab === 'settings' && styles.activeNavItem]}
-          onPress={() => setActiveTab('settings')}
+          onPress={() => navigate('settings')}
           activeOpacity={0.7}
         >
           <Text style={[styles.navIcon, activeTab === 'settings' && styles.activeNavIcon]}>⚙️</Text>

@@ -47,15 +47,16 @@ type ScreenMode = 'list' | 'add' | 'detail' | 'edit';
 
 interface ProductsScreenProps {
   token: string;
+  initialMode?: 'list' | 'add';
 }
 
-const ProductsScreen: React.FC<ProductsScreenProps> = () => {
+const ProductsScreen: React.FC<ProductsScreenProps> = ({ initialMode = 'list' }) => {
   const { t, i18n } = useTranslation();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [screenMode, setScreenMode] = useState<ScreenMode>('list');
+  const [screenMode, setScreenMode] = useState<ScreenMode>(initialMode === 'add' ? 'add' : 'list');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailRefreshing, setDetailRefreshing] = useState(false);
   const [detailRefreshFailed, setDetailRefreshFailed] = useState(false);
@@ -564,6 +565,16 @@ const ProductsScreen: React.FC<ProductsScreenProps> = () => {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (initialMode === 'add') {
+      setFormValues(EMPTY_PRODUCT_FORM);
+      setSelectedProduct(null);
+      setScreenMode('add');
+    } else {
+      setScreenMode('list');
+    }
+  }, [initialMode]);
 
   useEffect(() => {
     loadProducts();

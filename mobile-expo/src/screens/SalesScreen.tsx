@@ -76,16 +76,17 @@ interface Sale {
 
 interface SalesScreenProps {
   token: string;
+  initialTab?: 'list' | 'new';
   onNavigate?: (tab: 'dashboard' | 'products' | 'sales' | 'receipts' | 'reports' | 'expiring' | 'settings') => void;
 }
 
-const SalesScreen: React.FC<SalesScreenProps> = ({ token, onNavigate }) => {
+const SalesScreen: React.FC<SalesScreenProps> = ({ token, onNavigate, initialTab = 'list' }) => {
   const { t, i18n } = useTranslation();
   const [sales, setSales] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'new'>(initialTab);
   const [showScanner, setShowScanner] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [unknownBarcode, setUnknownBarcode] = useState('');
@@ -525,6 +526,10 @@ const SalesScreen: React.FC<SalesScreenProps> = ({ token, onNavigate }) => {
     await Promise.all([loadSales(), loadProducts()]);
     setRefreshing(false);
   };
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     loadSales();

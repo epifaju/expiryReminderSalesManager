@@ -64,8 +64,11 @@ interface ActivityItem {
 
 interface DashboardScreenProps {
   token: string;
-  onNavigate: (tab: 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings') => void;
-  isActive?: boolean; // Nouveau prop pour savoir si l'écran est actif
+  onNavigate: (
+    tab: 'dashboard' | 'products' | 'sales' | 'reports' | 'expiring' | 'settings',
+    options?: { salesTab?: 'list' | 'new'; productsMode?: 'list' | 'add' }
+  ) => void;
+  isActive?: boolean;
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, isActive = true }) => {
@@ -285,11 +288,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ token, onNavigate, is
 
   // Fonctions pour les actions rapides
   const handleNewSale = () => {
-    onNavigate('sales');
+    onNavigate('sales', { salesTab: 'new' });
   };
 
   const handleAddProduct = () => {
-    onNavigate('products');
+    onNavigate('products', { productsMode: 'add' });
   };
 
   const handleViewReports = () => {
